@@ -1,5 +1,9 @@
 import { put } from '@vercel/blob';
 import { IncomingForm } from 'formidable';
+import { readFileSync, unlinkSync } from 'fs';
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 export const config = {
   api: {
@@ -19,6 +23,22 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Sprawdź czy token Blob jest ustawiony
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error('BLOB_READ_WRITE_TOKEN not configured');
+    return res.status(500).json({ 
+      error: 'Konfiguracja serwera jest niepełna. Skontaktuj się z administratorem.' 
+    });
+  }
+
+  // Sprawdź konfigurację Supabase
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('Supabase configuration missing');
+    return res.status(500).json({ 
+      error: 'Konfiguracja bazy danych jest niepełna.' 
+    });
   }
 
   try {
@@ -61,30 +81,60 @@ export default async function handler(req, res) {
       }
 
       // Wczytaj plik jako Buffer
-      const fs = await import('fs');
-      const fileBuffer = fs.readFileSync(file.filepath);
+      const fileBuffer = readFileSync(file.filepath);
 
       // Generuj unikalną nazwę
       const timestamp = Date.now();
       const fileName = `${sessionId}/${timestamp}_${file.originalFilename}`;
 
       // Upload do Vercel Blob
+      console.log(`Uploading file: ${fileName}, size: ${file.size}, type: ${file.mimetype}`);
+      
       const blob = await put(fileName, fileBuffer, {
         access: 'public',
         token: process.env.BLOB_READ_WRITE_TOKEN,
         contentType: file.mimetype,
       });
 
-      uploadedUrls.push({
+      console.log(`Successfully uploaded: ${blob.url}`);
+
+      const fileData = {
         file_name: file.originalFilename,
         public_url: blob.url,
         size_bytes: file.size,
         uploaded_at: new Date().toISOString(),
         mime_type: file.mimetype,
-      });
+      };
+
+      uploadedUrls.push(fileData);
+
+      // Zapisz metadane do Supabase
+      try {
+        const supabaseResponse = await fetch(`${SUPABASE_URL}/rest/v1/photos`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            ...fileData
+          })
+        });
+
+        if (!supabaseResponse.ok) {
+          console.error(`Failed to save metadata to Supabase: ${supabaseResponse.status}`);
+          // Nie przerywamy procesu, ale logujemy błąd
+        }
+      } catch (supabaseError) {
+        console.error('Supabase save error:', supabaseError);
+        // Nie przerywamy procesu
+      }
 
       // Usuń tymczasowy plik
-      fs.unlinkSync(file.filepath);
+      unlinkSync(file.filepath);
     }
 
     return res.status(200).json({
