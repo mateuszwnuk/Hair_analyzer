@@ -17,7 +17,10 @@ function initSessionId() {
     sessionId = generateSessionId();
     sessionStorage.setItem('sessionId', sessionId);
   }
-  document.getElementById('session-id').textContent = sessionId;
+  const sessionElement = document.getElementById('session-id');
+  if (sessionElement) {
+    sessionElement.textContent = sessionId;
+  }
 }
 
 function generateSessionId() {
@@ -27,6 +30,8 @@ function generateSessionId() {
 function initDropZone() {
   const dropZone = document.getElementById('drop-zone');
   const fileInput = document.getElementById('file-input');
+
+  if (!dropZone || !fileInput) return;
 
   // Kliknięcie w drop zone
   dropZone.addEventListener('click', (e) => {
@@ -68,23 +73,29 @@ function initDropZone() {
 function handleFiles(files) {
   const fileArray = Array.from(files);
   const errorMessage = document.getElementById('error-message');
-  errorMessage.textContent = '';
+  if (errorMessage) errorMessage.textContent = '';
 
   // Walidacja liczby plików
   if (selectedFiles.length + fileArray.length > MAX_FILES) {
-    errorMessage.textContent = `Możesz przesłać maksymalnie ${MAX_FILES} pliki.`;
+    if (errorMessage) {
+      errorMessage.textContent = `Możesz przesłać maksymalnie ${MAX_FILES} pliki.`;
+    }
     return;
   }
 
   // Walidacja każdego pliku
   for (const file of fileArray) {
     if (!ALLOWED_TYPES.includes(file.type)) {
-      errorMessage.textContent = 'Dozwolone są tylko pliki JPG i PNG.';
+      if (errorMessage) {
+        errorMessage.textContent = 'Dozwolone są tylko pliki JPG i PNG.';
+      }
       continue;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      errorMessage.textContent = `Plik "${file.name}" przekracza limit 5 MB.`;
+      if (errorMessage) {
+        errorMessage.textContent = `Plik "${file.name}" przekracza limit 5 MB.`;
+      }
       continue;
     }
 
@@ -101,16 +112,24 @@ function handleFiles(files) {
 function updateFileList() {
   const fileList = document.getElementById('file-list');
   const template = document.getElementById('file-item-template');
+  
+  if (!fileList || !template) return;
+  
   fileList.innerHTML = '';
 
   selectedFiles.forEach((file, index) => {
     const clone = template.content.cloneNode(true);
     
-    clone.querySelector('.file-name').textContent = file.name;
-    clone.querySelector('.file-size').textContent = formatFileSize(file.size);
-    
+    const fileName = clone.querySelector('.file-name');
+    const fileSize = clone.querySelector('.file-size');
     const removeButton = clone.querySelector('.remove-button');
-    removeButton.addEventListener('click', () => removeFile(index));
+    
+    if (fileName) fileName.textContent = file.name;
+    if (fileSize) fileSize.textContent = formatFileSize(file.size);
+    
+    if (removeButton) {
+      removeButton.addEventListener('click', () => removeFile(index));
+    }
     
     fileList.appendChild(clone);
   });
@@ -120,7 +139,8 @@ function removeFile(index) {
   selectedFiles.splice(index, 1);
   updateFileList();
   updateSubmitButton();
-  document.getElementById('error-message').textContent = '';
+  const errorMessage = document.getElementById('error-message');
+  if (errorMessage) errorMessage.textContent = '';
 }
 
 function formatFileSize(bytes) {
@@ -131,12 +151,16 @@ function formatFileSize(bytes) {
 
 function updateSubmitButton() {
   const submitButton = document.querySelector('.submit-button');
-  submitButton.disabled = selectedFiles.length === 0;
+  if (submitButton) {
+    submitButton.disabled = selectedFiles.length === 0;
+  }
 }
 
 function initForm() {
   const form = document.getElementById('upload-form');
-  form.addEventListener('submit', handleFormSubmit);
+  if (form) {
+    form.addEventListener('submit', handleFormSubmit);
+  }
 }
 
 async function handleFormSubmit(event) {
@@ -153,12 +177,14 @@ async function handleFormSubmit(event) {
   });
 
   const submitButton = document.querySelector('.submit-button');
+  if (!submitButton) return;
+  
   const originalText = submitButton.textContent;
   submitButton.disabled = true;
   submitButton.textContent = 'Przesyłanie...';
 
   try {
-    const sessionId = sessionStorage.getItem('sessionId');
+    const sessionId = sessionStorage.getItem('sessionId') || generateSessionId();
     
     const response = await fetch('/api/upload', {
       method: 'POST',
@@ -168,9 +194,14 @@ async function handleFormSubmit(event) {
       body: formData,
     });
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (e) {
+      throw new Error('Nieprawidłowa odpowiedź serwera');
+    }
 
-    if (response.ok) {
+    if (response.ok && result.success) {
       showToast('Zdjęcia zostały przesłane pomyślnie!', 'success');
       
       // Zapisz URLs do localStorage
@@ -181,33 +212,5 @@ async function handleFormSubmit(event) {
       // Wyczyść formularz
       selectedFiles = [];
       updateFileList();
-      document.getElementById('file-input').value = '';
-      
-      // Przekieruj do dashboardu po 1.5s
-      setTimeout(() => {
-        window.location.href = 'dashboard.html';
-      }, 1500);
-    } else {
-      showToast(result.error || 'Błąd podczas przesyłania', 'error');
-    }
-  } catch (error) {
-    console.error('Upload error:', error);
-    showToast('Błąd połączenia z serwerem', 'error');
-  } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = originalText;
-  }
-}
-
-function showToast(message, type = 'info') {
-  const toast = document.getElementById('toast');
-  const toastMessage = toast.querySelector('.toast-message');
-  
-  toastMessage.textContent = message;
-  toast.className = `toast toast-${type}`;
-  toast.hidden = false;
-
-  setTimeout(() => {
-    toast.hidden = true;
-  }, 3000);
-}
+      const fileInput = document.getElementById('file-input');
+      if

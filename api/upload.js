@@ -1,54 +1,89 @@
 import { put } from '@vercel/blob';
+import { IncomingForm } from 'formidable';
 
 export const config = {
   api: {
-    bodyParser: false, // Musimy wyłączyć domyślny parser dla FormData
+    bodyParser: false, // Wyłącz domyślny parser
   },
 };
 
 export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session-ID');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Vercel automatycznie parsuje multipart/form-data
-    const contentType = req.headers['content-type'] || '';
-    
-    if (!contentType.includes('multipart/form-data')) {
-      return res.status(400).json({ error: 'Content-Type musi być multipart/form-data' });
+    // Parse form data using formidable
+    const form = new IncomingForm({
+      maxFileSize: 5 * 1024 * 1024, // 5 MB
+      maxFiles: 4,
+      allowEmptyFiles: false,
+    });
+
+    const [fields, files] = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        else resolve([fields, files]);
+      });
+    });
+
+    const fileArray = files.files || [];
+    const filesArray = Array.isArray(fileArray) ? fileArray : [fileArray];
+
+    if (filesArray.length === 0) {
+      return res.status(400).json({ error: 'Nie przesłano żadnych plików' });
     }
 
-    // W Vercel Functions req.body będzie zawierać pliki
-    const files = req.body?.files || [];
-    
-    if (!Array.isArray(files)) {
-      return res.status(400).json({ error: 'Nieprawidłowy format danych' });
-    }
-
-    if (files.length === 0 || files.length > 4) {
-      return res.status(400).json({ error: 'Wymagane 1-4 pliki' });
+    if (filesArray.length > 4) {
+      return res.status(400).json({ error: 'Maksymalnie 4 pliki' });
     }
 
     const uploadedUrls = [];
     const sessionId = req.headers['x-session-id'] || `session_${Date.now()}`;
-    
-    for (const file of files) {
-      // Generuj unikalną nazwę z sessionId
+
+    for (const file of filesArray) {
+      if (!file || !file.filepath) continue;
+
+      // Walidacja typu pliku
+      if (!['image/jpeg', 'image/png'].includes(file.mimetype)) {
+        return res.status(400).json({ 
+          error: `Nieprawidłowy typ pliku: ${file.originalFilename}. Tylko JPG i PNG.` 
+        });
+      }
+
+      // Wczytaj plik jako Buffer
+      const fs = await import('fs');
+      const fileBuffer = fs.readFileSync(file.filepath);
+
+      // Generuj unikalną nazwę
       const timestamp = Date.now();
-      const fileName = `${sessionId}/${timestamp}_${file.name}`;
-      
-      const blob = await put(fileName, file, {
+      const fileName = `${sessionId}/${timestamp}_${file.originalFilename}`;
+
+      // Upload do Vercel Blob
+      const blob = await put(fileName, fileBuffer, {
         access: 'public',
         token: process.env.BLOB_READ_WRITE_TOKEN,
+        contentType: file.mimetype,
       });
-      
+
       uploadedUrls.push({
-        filename: file.name,
+        filename: file.originalFilename,
         url: blob.url,
         size: file.size,
         uploadedAt: new Date().toISOString(),
       });
+
+      // Usuń tymczasowy plik
+      fs.unlinkSync(file.filepath);
     }
 
     return res.status(200).json({
@@ -56,11 +91,12 @@ export default async function handler(req, res) {
       files: uploadedUrls,
       sessionId: sessionId,
     });
+
   } catch (error) {
     console.error('Upload error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Błąd podczas przesyłania',
-      details: error.message 
+      details: error.message,
     });
   }
 }
