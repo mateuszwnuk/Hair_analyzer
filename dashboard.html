@@ -3,41 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hair Analyzer - Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Hair Analyzer - Przekierowanie</title>
+  <script>
+    // Przekieruj do głównej aplikacji z kartą galerii
+    window.location.replace('index.html#gallery');
+  </script>
 </head>
 <body>
-  <main class="container dashboard">
-    <header class="page-header">
-      <h1>Dashboard przesłanych zdjęć</h1>
-      <p class="subtitle">Poniżej znajdziesz wszystkie zdjęcia przypisane do Twojej bieżącej sesji.</p>
-      <div class="session-toolbar">
-        <p class="session-info">ID Twojej sesji: <code id="session-id"></code></p>
-        <a class="link-button" href="index.html">Wróć do przesyłania</a>
-      </div>
-    </header>
-
-    <section class="dashboard-content">
-      <div class="dashboard-actions">
-        <button type="button" class="link-button" id="refresh-button">Odśwież listę</button>
-      </div>
-      <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
-      <ul id="session-gallery" class="session-gallery" aria-live="polite" aria-busy="false"></ul>
-    </section>
-  </main>
-
-  <template id="gallery-item-template">
-    <li class="gallery-item">
-      <figure>
-        <img loading="lazy" alt="Podgląd przesłanego zdjęcia" />
-        <figcaption>
-          <span class="file-name"></span>
-          <span class="meta"></span>
-        </figcaption>
-      </figure>
-    </li>
-  </template>
-
-  <script src="scripts/dashboard.js"></script>
+  <p>Przekierowywanie do głównej aplikacji...</p>
 </body>
 </html>

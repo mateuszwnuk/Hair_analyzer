@@ -47,6 +47,16 @@ export default async function handler(req, res) {
 
     const fileArray = files.files || [];
     const filesArray = Array.isArray(fileArray) ? fileArray : [fileArray];
+    
+    // Pobierz metadane jeśli zostały przesłane
+    let metadata = null;
+    if (fields.metadata) {
+      try {
+        metadata = JSON.parse(Array.isArray(fields.metadata) ? fields.metadata[0] : fields.metadata);
+      } catch (e) {
+        console.warn('Invalid metadata JSON:', e);
+      }
+    }
 
     if (filesArray.length === 0) {
       return res.status(400).json({ error: 'Nie przesłano żadnych plików' });
@@ -94,6 +104,7 @@ export default async function handler(req, res) {
         uploaded_at: new Date().toISOString(),
         mime_type: file.mimetype,
         session_id: sessionId,
+        metadata: metadata, // Dodaj metadane do odpowiedzi
       });
 
       // Usuń tymczasowy plik

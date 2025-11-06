@@ -1,5 +1,6 @@
 // Globalne zmienne
 let selectedFiles = [];
+let currentTab = 'upload';
 const MAX_FILES = 4;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
@@ -7,8 +8,15 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 // Inicjalizacja
 document.addEventListener('DOMContentLoaded', () => {
   initSessionId();
+  initTabs();
   initDropZone();
   initForm();
+  initMetadataForm();
+  
+  // Sprawdź hash URL dla przełączenia na odpowiednią kartę
+  if (window.location.hash === '#gallery') {
+    switchTab('gallery');
+  }
 });
 
 function initSessionId() {
@@ -26,6 +34,197 @@ function initSessionId() {
 function generateSessionId() {
   return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
+
+// Funkcje obsługi kart
+function initTabs() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const tabName = button.dataset.tab;
+      switchTab(tabName);
+    });
+  });
+}
+
+function switchTab(tabName) {
+  currentTab = tabName;
+  
+  // Aktualizuj przyciski
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+  
+  // Aktualizuj zawartość
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.toggle('active', content.id === `${tabName}-tab`);
+  });
+  
+  // Jeśli przełączamy na galerię, załaduj dane
+  if (tabName === 'gallery') {
+    loadGallery();
+  }
+  
+  // Aktualizuj URL hash
+  window.history.replaceState(null, null, tabName === 'upload' ? '#' : `#${tabName}`);
+}
+
+// Funkcje galerii (przeniesione z dashboard.js)
+function loadGallery() {
+  const sessionId = sessionStorage.getItem('sessionId');
+  if (sessionId) {
+    fetchUploads(sessionId);
+  }
+}
+
+const formatDate = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return date.toLocaleString("pl-PL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatSize = (bytes) => {
+  if (!bytes && bytes !== 0) return "";
+  const units = ["B", "KB", "MB", "GB"];
+  let size = bytes;
+  let index = 0;
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024;
+    index += 1;
+  }
+  return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+};
+
+const renderEmptyState = (message) => {
+  const gallery = document.getElementById("session-gallery");
+  const statusLabel = document.getElementById("dashboard-status");
+  
+  if (gallery) gallery.innerHTML = "";
+  if (statusLabel) statusLabel.textContent = message;
+  if (gallery) gallery.setAttribute("aria-busy", "false");
+};
+
+const renderGallery = (files) => {
+  const gallery = document.getElementById("session-gallery");
+  const galleryTemplate = document.getElementById("gallery-item-template");
+  const statusLabel = document.getElementById("dashboard-status");
+  
+  if (!gallery || !galleryTemplate) return;
+  
+  gallery.innerHTML = "";
+  gallery.setAttribute("aria-busy", "false");
+
+  files.forEach((file) => {
+    const clone = galleryTemplate.content.cloneNode(true);
+    const image = clone.querySelector("img");
+    const name = clone.querySelector(".file-name");
+    const meta = clone.querySelector(".meta");
+    const patientInfo = clone.querySelector(".patient-info");
+
+    if (image) image.src = file.public_url;
+    if (name) name.textContent = file.file_name;
+
+    // Podstawowe metadane pliku
+    const details = [];
+    if (file.uploaded_at) details.push(formatDate(file.uploaded_at));
+    if (file.size_bytes) details.push(formatSize(file.size_bytes));
+    if (file.mime_type) details.push(file.mime_type);
+    if (meta) meta.textContent = details.join(" • ");
+
+    // Informacje o pacjencie
+    if (patientInfo && file.metadata) {
+      const metadata = file.metadata;
+      let patientHtml = '';
+      
+      if (metadata.age) {
+        patientHtml += `<div class="info-item"><span class="info-label">Wiek:</span> <span class="info-value">${metadata.age} lat</span></div>`;
+      }
+      if (metadata.gender) {
+        const genderMap = { female: 'Kobieta', male: 'Mężczyzna', other: 'Inna' };
+        patientHtml += `<div class="info-item"><span class="info-label">Płeć:</span> <span class="info-value">${genderMap[metadata.gender] || metadata.gender}</span></div>`;
+      }
+      if (metadata.problem) {
+        const problemMap = {
+          'hair-loss': 'Wypadanie włosów',
+          'dandruff': 'Łupież',
+          'seborrhea': 'Łojotok',
+          'alopecia': 'Łysienie',
+          'scalp-irritation': 'Podrażnienie skóry głowy',
+          'other': 'Inny problem'
+        };
+        patientHtml += `<div class="info-item"><span class="info-label">Problem:</span> <span class="info-value">${problemMap[metadata.problem] || metadata.problem}</span></div>`;
+      }
+      
+      patientInfo.innerHTML = patientHtml;
+    }
+
+    gallery.appendChild(clone);
+  });
+};
+
+const fetchUploads = async (sessionId) => {
+  const gallery = document.getElementById("session-gallery");
+  const statusLabel = document.getElementById("dashboard-status");
+  
+  if (gallery) gallery.setAttribute("aria-busy", "true");
+  if (statusLabel) statusLabel.textContent = "Ładowanie danych...";
+
+  try {
+    const response = await fetch(`/api/uploads?sessionId=${encodeURIComponent(sessionId)}`);
+    const payload = await response.json().catch(() => null);
+
+    let files = [];
+
+    if (response.ok && Array.isArray(payload?.files)) {
+      files = payload.files;
+    } else {
+      console.warn('API not available, using localStorage fallback');
+      const localFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+      files = localFiles.filter(file => file.session_id === sessionId);
+    }
+
+    if (files.length === 0) {
+      renderEmptyState("Brak przesłanych plików w tej sesji.");
+      return;
+    }
+
+    if (statusLabel) statusLabel.textContent = "";
+    renderGallery(files);
+  } catch (error) {
+    console.error('Error fetching uploads:', error);
+    
+    try {
+      const localFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+      const sessionFiles = localFiles.filter(file => file.session_id === sessionId);
+      
+      if (sessionFiles.length > 0) {
+        if (statusLabel) statusLabel.textContent = "Dane załadowane z pamięci lokalnej.";
+        renderGallery(sessionFiles);
+      } else {
+        renderEmptyState("Brak przesłanych plików w tej sesji.");
+      }
+    } catch (localError) {
+      renderEmptyState(error.message || "Wystąpił błąd podczas ładowania danych.");
+    }
+  }
+};
+
+// Inicjalizacja refresh button dla galerii
+document.addEventListener('DOMContentLoaded', () => {
+  const refreshButton = document.getElementById('refresh-button');
+  if (refreshButton) {
+    refreshButton.addEventListener('click', () => {
+      const sessionId = sessionStorage.getItem('sessionId');
+      if (sessionId) fetchUploads(sessionId);
+    });
+  }
+});
 
 function initDropZone() {
   const dropZone = document.getElementById('drop-zone');
@@ -112,6 +311,7 @@ function handleFiles(files) {
 function updateFileList() {
   const fileList = document.getElementById('file-list');
   const template = document.getElementById('file-item-template');
+  const metadataForm = document.getElementById('metadata-form');
   
   if (!fileList || !template) return;
   
@@ -133,6 +333,38 @@ function updateFileList() {
     
     fileList.appendChild(clone);
   });
+  
+  // Pokaż/ukryj formularz metatagów
+  if (metadataForm) {
+    metadataForm.style.display = selectedFiles.length > 0 ? 'block' : 'none';
+  }
+}
+
+function initMetadataForm() {
+  // Nie ma specjalnej inicjalizacji - formularz jest już w HTML
+}
+
+function getMetadata() {
+  const age = document.getElementById('patient-age')?.value;
+  const gender = document.getElementById('patient-gender')?.value;
+  const problem = document.getElementById('patient-problem')?.value;
+  
+  const metadata = {};
+  if (age) metadata.age = parseInt(age);
+  if (gender) metadata.gender = gender;
+  if (problem) metadata.problem = problem;
+  
+  return Object.keys(metadata).length > 0 ? metadata : null;
+}
+
+function clearMetadataForm() {
+  const ageInput = document.getElementById('patient-age');
+  const genderSelect = document.getElementById('patient-gender');
+  const problemSelect = document.getElementById('patient-problem');
+  
+  if (ageInput) ageInput.value = '';
+  if (genderSelect) genderSelect.value = '';
+  if (problemSelect) problemSelect.value = '';
 }
 
 function removeFile(index) {
@@ -176,6 +408,12 @@ async function handleFormSubmit(event) {
     formData.append('files', file);
   });
 
+  // Dodaj metadane jako JSON
+  const metadata = getMetadata();
+  if (metadata) {
+    formData.append('metadata', JSON.stringify(metadata));
+  }
+
   const submitButton = document.querySelector('.submit-button');
   if (!submitButton) return;
   
@@ -204,11 +442,12 @@ async function handleFormSubmit(event) {
     if (response.ok && result.success) {
       showToast('Zdjęcia zostały przesłane pomyślnie!', 'success');
       
-      // Zapisz pliki do localStorage z session_id
+      // Zapisz pliki do localStorage z session_id i metadanymi
       const existingFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
       const filesWithSession = result.files.map(file => ({
         ...file,
-        session_id: sessionId
+        session_id: sessionId,
+        metadata: metadata
       }));
       const allFiles = [...existingFiles, ...filesWithSession];
       localStorage.setItem('uploadedFiles', JSON.stringify(allFiles));
@@ -216,8 +455,14 @@ async function handleFormSubmit(event) {
       // Wyczyść formularz
       selectedFiles = [];
       updateFileList();
+      clearMetadataForm();
       const fileInput = document.getElementById('file-input');
       if (fileInput) fileInput.value = '';
+      
+      // Automatycznie przełącz na kartę galerii
+      setTimeout(() => {
+        switchTab('gallery');
+      }, 1000);
     } else {
       throw new Error(result.error || 'Nie udało się przesłać plików');
     }

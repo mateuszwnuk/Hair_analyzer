@@ -3,39 +3,122 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hair Analyzer - Upload zdjęć</title>
+  <title>Hair Analyzer - Analiza Trychologiczna</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="container">
-    <header class="page-header">
-      <h1>Hair Analyzer</h1>
-      <p class="subtitle">Prześlij do 4 zdjęć skóry głowy w formacie JPG lub PNG (maksymalnie 5 MB na plik).</p>
-      <div class="session-toolbar">
-        <p class="session-info">ID Twojej sesji: <code id="session-id"></code></p>
-        <a class="link-button" href="dashboard.html">Przejdź do dashboardu</a>
+  <div class="app-container">
+    <!-- Wspólny nagłówek -->
+    <header class="app-header">
+      <div class="header-content">
+        <h1>Hair Analyzer</h1>
+        <p class="app-subtitle">System analizy trychologicznej skóry głowy</p>
+        <div class="session-info">
+          <span>ID Sesji: <code id="session-id"></code></span>
+        </div>
       </div>
     </header>
 
-    <form id="upload-form" novalidate>
-      <div id="drop-zone" class="drop-zone" role="button" tabindex="0">
-        <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3a4 4 0 0 0-4 4v1H7a3 3 0 0 0-3 3v6a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-6a3 3 0 0 0-3-3h-1V7a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v1h-4V7a2 2 0 0 1 2-2zm-5 5h10a1 1 0 0 1 1 1v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a1 1 0 0 1 1-1zm5 1.5a.75.75 0 0 0-.75.75V16H10a.75.75 0 0 0 0 1.5h4A.75.75 0 0 0 14.75 16H13v-3.75A.75.75 0 0 0 12 11.5z" />
+    <!-- Nawigacja kartami -->
+    <nav class="tab-navigation">
+      <button class="tab-button active" data-tab="upload">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7,10 12,15 17,10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        <p><strong>Kliknij, aby wybrać pliki</strong> lub przeciągnij je w to miejsce.</p>
-        <p class="hint">Obsługiwane formaty: JPG, PNG. Maksymalnie 4 pliki po 5 MB.</p>
-        <input id="file-input" type="file" accept="image/png, image/jpeg" multiple aria-label="Wybierz zdjęcia" />
+        Wrzuć zdjęcia
+      </button>
+      <button class="tab-button" data-tab="gallery">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10,9 9,9 8,9"/>
+        </svg>
+        Baza zdjęć
+      </button>
+    </nav>
+
+    <!-- Karta uploadu -->
+    <main id="upload-tab" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <h2>Przesyłanie zdjęć</h2>
+          <p>Prześlij do 4 zdjęć skóry głowy w formacie JPG lub PNG (maksymalnie 5 MB na plik).</p>
+        </div>
+
+        <form id="upload-form" novalidate>
+          <div id="drop-zone" class="drop-zone" role="button" tabindex="0">
+            <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3a4 4 0 0 0-4 4v1H7a3 3 0 0 0-3 3v6a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-6a3 3 0 0 0-3-3h-1V7a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v1h-4V7a2 2 0 0 1 2-2zm-5 5h10a1 1 0 0 1 1 1v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a1 1 0 0 1 1-1zm5 1.5a.75.75 0 0 0-.75.75V16H10a.75.75 0 0 0 0 1.5h4A.75.75 0 0 0 14.75 16H13v-3.75A.75.75 0 0 0 12 11.5z" />
+            </svg>
+            <p><strong>Kliknij, aby wybrać pliki</strong> lub przeciągnij je w to miejsce.</p>
+            <p class="hint">Obsługiwane formaty: JPG, PNG. Maksymalnie 4 pliki po 5 MB.</p>
+            <input id="file-input" type="file" accept="image/png, image/jpeg" multiple aria-label="Wybierz zdjęcia" />
+          </div>
+
+          <!-- Formularz metatagów -->
+          <div id="metadata-form" class="metadata-form" style="display: none;">
+            <h3>Informacje o pacjencie</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="patient-age">Wiek</label>
+                <input type="number" id="patient-age" min="1" max="120" placeholder="np. 35">
+              </div>
+              <div class="form-group">
+                <label for="patient-gender">Płeć</label>
+                <select id="patient-gender">
+                  <option value="">Wybierz płeć</option>
+                  <option value="female">Kobieta</option>
+                  <option value="male">Mężczyzna</option>
+                  <option value="other">Inna</option>
+                </select>
+              </div>
+              <div class="form-group form-group-full">
+                <label for="patient-problem">Problem trychologiczny</label>
+                <select id="patient-problem">
+                  <option value="">Wybierz problem</option>
+                  <option value="hair-loss">Wypadanie włosów</option>
+                  <option value="dandruff">Łupież</option>
+                  <option value="seborrhea">Łojotok</option>
+                  <option value="alopecia">Łysienie</option>
+                  <option value="scalp-irritation">Podrażnienie skóry głowy</option>
+                  <option value="other">Inny problem</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <section aria-live="polite" aria-atomic="true">
+            <ul id="file-list" class="file-list"></ul>
+            <p id="error-message" class="error-message" role="alert"></p>
+          </section>
+
+          <button type="submit" class="submit-button" disabled>Prześlij zdjęcia</button>
+        </form>
       </div>
+    </main>
 
-      <section aria-live="polite" aria-atomic="true">
-        <ul id="file-list" class="file-list"></ul>
-        <p id="error-message" class="error-message" role="alert"></p>
-      </section>
+    <!-- Karta galerii -->
+    <main id="gallery-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>Baza zdjęć</h2>
+          <p>Wszystkie zdjęcia przypisane do Twojej sesji.</p>
+          <button type="button" class="link-button" id="refresh-button">Odśwież listę</button>
+        </div>
+        
+        <div class="dashboard-content">
+          <p id="dashboard-status" class="dashboard-status" aria-live="polite"></p>
+          <ul id="session-gallery" class="session-gallery" aria-live="polite" aria-busy="false"></ul>
+        </div>
+      </div>
+    </main>
+  </div>
 
-      <button type="submit" class="submit-button" disabled>Prześlij</button>
-    </form>
-  </main>
-
+  <!-- Template dla pliku -->
   <template id="file-item-template">
     <li class="file-item">
       <div class="file-meta">
@@ -43,6 +126,22 @@
         <span class="file-size"></span>
       </div>
       <button type="button" class="remove-button" aria-label="Usuń plik">&times;</button>
+    </li>
+  </template>
+
+  <!-- Template dla galerii -->
+  <template id="gallery-item-template">
+    <li class="gallery-item">
+      <figure>
+        <img loading="lazy" alt="Podgląd przesłanego zdjęcia" />
+        <figcaption>
+          <div class="file-info">
+            <span class="file-name"></span>
+            <span class="meta"></span>
+          </div>
+          <div class="patient-info"></div>
+        </figcaption>
+      </figure>
     </li>
   </template>
 
