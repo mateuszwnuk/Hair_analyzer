@@ -9,9 +9,11 @@ REQUIRED_ENV_VARS.forEach((key) => {
 });
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "uploads";
+const SUPABASE_BUCKET = (process.env.SUPABASE_STORAGE_BUCKET || "uploads").trim();
 const SUPABASE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+
+let bucketInitializationPromise = null;
 
 const MAX_FILES = 4;
 
@@ -33,6 +35,81 @@ const publicUrlFor = (bucket, path) =>
   )}`;
 
 const toBuffer = (base64) => Buffer.from(base64, "base64");
+
+const ensureBucketExists = async () => {
+  if (bucketInitializationPromise) {
+    return bucketInitializationPromise;
+  }
+
+  bucketInitializationPromise = (async () => {
+    if (!SUPABASE_BUCKET) {
+      throw new Error(
+        "Nie skonfigurowano nazwy koszyka Supabase. Ustaw zmienną SUPABASE_STORAGE_BUCKET."
+      );
+    }
+
+    const detailsResponse = await fetch(
+      `${SUPABASE_URL}/storage/v1/bucket/${encodePath(SUPABASE_BUCKET)}`,
+      {
+        headers: headers(),
+      }
+    );
+
+    if (detailsResponse.ok) {
+      return true;
+    }
+
+    if (detailsResponse.status === 404) {
+      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error(
+          `Koszyk '${SUPABASE_BUCKET}' nie istnieje. Utwórz go w panelu Supabase Storage lub podaj istniejącą nazwę w SUPABASE_STORAGE_BUCKET.`
+        );
+      }
+
+      const createResponse = await fetch(
+        `${SUPABASE_URL}/storage/v1/bucket`,
+        {
+          method: "POST",
+          headers: headers({ "Content-Type": "application/json" }),
+          body: JSON.stringify({
+            id: SUPABASE_BUCKET,
+            name: SUPABASE_BUCKET,
+            public: true,
+          }),
+        }
+      );
+
+      if (createResponse.ok || createResponse.status === 409) {
+        return true;
+      }
+
+      const createError = await createResponse.json().catch(() => null);
+      throw new Error(
+        createError?.message ||
+          `Nie udało się utworzyć koszyka '${SUPABASE_BUCKET}' w Supabase Storage.`
+      );
+    }
+
+    if (detailsResponse.status === 403) {
+      throw new Error(
+        `Brak uprawnień do koszyka '${SUPABASE_BUCKET}'. Użyj klucza service_role lub zapewnij odpowiednie polityki dostępu.`
+      );
+    }
+
+    const detailsError = await detailsResponse.json().catch(() => null);
+    throw new Error(
+      detailsError?.message ||
+        "Nie udało się zweryfikować koszyka Supabase Storage."
+    );
+  })();
+
+  try {
+    return await bucketInitializationPromise;
+  } catch (error) {
+    bucketInitializationPromise = null;
+    throw error;
+  }
+};
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -60,6 +137,16 @@ module.exports = async (req, res) => {
   if (files.length > MAX_FILES) {
     return res.status(400).json({
       error: `Można przesłać maksymalnie ${MAX_FILES} pliki jednocześnie.`,
+    });
+  }
+
+  try {
+    await ensureBucketExists();
+  } catch (error) {
+    console.error("[api/upload] bucket validation", error);
+    return res.status(500).json({
+      error: error?.message ||
+        "Nie udało się zweryfikować koszyka Supabase Storage.",
     });
   }
 

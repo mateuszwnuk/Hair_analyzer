@@ -26,6 +26,9 @@ Na platformie Vercel należy dodać zmienne środowiskowe wskazane w pliku `.env
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY` (zalecane) lub `SUPABASE_ANON_KEY`
 - `SUPABASE_DB_PASSWORD` (opcjonalnie, jeżeli wykorzystywana jest zewnętrzna integracja)
+- `SUPABASE_STORAGE_BUCKET` (nazwa koszyka w Supabase Storage, domyślnie `uploads`)
+
+Jeżeli dostarczysz `SUPABASE_SERVICE_ROLE_KEY`, funkcja `api/upload.js` spróbuje automatycznie utworzyć wskazany koszyk (z dostępem publicznym), gdy nie zostanie on odnaleziony. W przeciwnym razie należy ręcznie stworzyć koszyk w Supabase Storage i upewnić się, że nazwa pokrywa się z wartością zmiennej `SUPABASE_STORAGE_BUCKET`.
 - `SUPABASE_STORAGE_BUCKET` (nazwa istniejącego koszyka w Supabase Storage, domyślnie `uploads`)
 
 > **Uwaga:** Klucz serwisowy (`service_role`) ma pełne uprawnienia do projektu Supabase. Przechowuj go wyłącznie po stronie serwerowej (np. w Vercel Environment Variables). Front-end korzysta wyłącznie z funkcji serwerowych, dzięki czemu wrażliwe dane nie są ujawniane użytkownikom.
