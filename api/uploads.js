@@ -37,15 +37,25 @@ export default async function handler(req, res) {
     });
 
     // Przekształć dane do formatu oczekiwanego przez frontend
-    const files = blobs.map(blob => ({
-      id: blob.pathname,
-      session_id: sessionId,
-      file_name: blob.pathname.split('/').pop().replace(/^\d+_/, ''), // usuń timestamp
-      public_url: blob.url,
-      uploaded_at: blob.uploadedAt,
-      mime_type: getContentTypeFromUrl(blob.url),
-      size_bytes: blob.size,
-    }));
+    const files = blobs.map(blob => {
+      const pathParts = blob.pathname.split('/');
+      const fullFileName = pathParts[pathParts.length - 1];
+      
+      // Wyodrębnij metadane z nazwy pliku
+      const metadata = parseMetadataFromFileName(fullFileName);
+      const originalFileName = extractOriginalFileName(fullFileName);
+      
+      return {
+        id: blob.pathname,
+        session_id: sessionId,
+        file_name: originalFileName,
+        public_url: blob.url,
+        uploaded_at: blob.uploadedAt,
+        mime_type: getContentTypeFromUrl(blob.url),
+        size_bytes: blob.size,
+        metadata: metadata,
+      };
+    });
 
     // Sortuj od najnowszych
     files.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
@@ -78,4 +88,41 @@ function getContentTypeFromUrl(url) {
     default:
       return 'application/octet-stream';
   }
+}
+
+// Funkcja do wyodrębnienia metadanych z nazwy pliku
+function parseMetadataFromFileName(fileName) {
+  const metadata = {};
+  
+  // Szukaj wzorca _META_..._ w nazwie pliku
+  const metaMatch = fileName.match(/_META_([^.]+)_/);
+  if (!metaMatch) return null;
+  
+  const metaString = metaMatch[1];
+  const metaParts = metaString.split('_');
+  
+  for (const part of metaParts) {
+    if (part.startsWith('age')) {
+      const age = parseInt(part.substring(3));
+      if (!isNaN(age)) metadata.age = age;
+    } else if (part.startsWith('gender')) {
+      metadata.gender = part.substring(6);
+    } else if (part.startsWith('problem')) {
+      // Dekoduj problem (przywróć spacje)
+      metadata.problem = part.substring(7).replace(/_/g, ' ');
+    }
+  }
+  
+  return Object.keys(metadata).length > 0 ? metadata : null;
+}
+
+// Funkcja do wyodrębnienia oryginalnej nazwy pliku
+function extractOriginalFileName(fileName) {
+  // Usuń timestamp z początku
+  let cleaned = fileName.replace(/^\d+_/, '');
+  
+  // Usuń metadane jeśli istnieją
+  cleaned = cleaned.replace(/_META_[^.]+_/, '');
+  
+  return cleaned;
 }

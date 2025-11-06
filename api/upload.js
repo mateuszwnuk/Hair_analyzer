@@ -82,11 +82,32 @@ export default async function handler(req, res) {
       // Wczytaj plik jako Buffer
       const fileBuffer = readFileSync(file.filepath);
 
-      // Generuj unikalną nazwę
+      // Generuj unikalną nazwę z metadanami
       const timestamp = Date.now();
-      const fileName = `${sessionId}/${timestamp}_${file.originalFilename}`;
+      const baseFileName = file.originalFilename.replace(/\.[^/.]+$/, ""); // usuń rozszerzenie
+      const extension = file.originalFilename.split('.').pop();
+      
+      // Koduj metadane w nazwie pliku
+      let metadataString = '';
+      if (metadata) {
+        const metaParts = [];
+        if (metadata.age) metaParts.push(`age${metadata.age}`);
+        if (metadata.gender) metaParts.push(`gender${metadata.gender}`);
+        if (metadata.problem) {
+          // Enkoduj problem (usuń specjalne znaki i spacje)
+          const encodedProblem = metadata.problem
+            .replace(/[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ ]/g, '')
+            .replace(/\s+/g, '_')
+            .substring(0, 50); // ograniczenie długości
+          metaParts.push(`problem${encodedProblem}`);
+        }
+        if (metaParts.length > 0) {
+          metadataString = `_META_${metaParts.join('_')}_`;
+        }
+      }
+      
+      const fileName = `${sessionId}/${timestamp}_${baseFileName}${metadataString}.${extension}`;
 
-      // Upload do Vercel Blob
       console.log(`Uploading file: ${fileName}, size: ${file.size}, type: ${file.mimetype}`);
       
       const blob = await put(fileName, fileBuffer, {
@@ -105,6 +126,7 @@ export default async function handler(req, res) {
         mime_type: file.mimetype,
         session_id: sessionId,
         metadata: metadata, // Dodaj metadane do odpowiedzi
+        blob_path: fileName, // Dodaj ścieżkę blob dla debugowania
       });
 
       // Usuń tymczasowy plik

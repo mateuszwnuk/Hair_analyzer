@@ -120,7 +120,11 @@ const renderGallery = (files) => {
   gallery.innerHTML = "";
   gallery.setAttribute("aria-busy", "false");
 
+  console.log('Rendering gallery with files:', files); // Debug log
+
   files.forEach((file) => {
+    console.log('Processing file:', file.file_name, 'with metadata:', file.metadata); // Debug log
+    
     const clone = galleryTemplate.content.cloneNode(true);
     const image = clone.querySelector("img");
     const name = clone.querySelector(".file-name");
@@ -150,18 +154,16 @@ const renderGallery = (files) => {
         patientHtml += `<div class="info-item"><span class="info-label">Płeć:</span> <span class="info-value">${genderMap[metadata.gender] || metadata.gender}</span></div>`;
       }
       if (metadata.problem) {
-        const problemMap = {
-          'hair-loss': 'Wypadanie włosów',
-          'dandruff': 'Łupież',
-          'seborrhea': 'Łojotok',
-          'alopecia': 'Łysienie',
-          'scalp-irritation': 'Podrażnienie skóry głowy',
-          'other': 'Inny problem'
-        };
-        patientHtml += `<div class="info-item"><span class="info-label">Problem:</span> <span class="info-value">${problemMap[metadata.problem] || metadata.problem}</span></div>`;
+        patientHtml += `<div class="info-item"><span class="info-label">Problem:</span> <span class="info-value">${metadata.problem}</span></div>`;
       }
       
       patientInfo.innerHTML = patientHtml;
+      console.log('Patient info HTML:', patientHtml); // Debug log
+    } else {
+      console.log('No metadata found for file:', file.file_name); // Debug log
+      if (patientInfo) {
+        patientInfo.innerHTML = '<div class="info-item"><span class="info-label">Brak metadanych</span></div>';
+      }
     }
 
     gallery.appendChild(clone);
@@ -360,11 +362,11 @@ function getMetadata() {
 function clearMetadataForm() {
   const ageInput = document.getElementById('patient-age');
   const genderSelect = document.getElementById('patient-gender');
-  const problemSelect = document.getElementById('patient-problem');
+  const problemInput = document.getElementById('patient-problem');
   
   if (ageInput) ageInput.value = '';
   if (genderSelect) genderSelect.value = '';
-  if (problemSelect) problemSelect.value = '';
+  if (problemInput) problemInput.value = '';
 }
 
 function removeFile(index) {
