@@ -76,10 +76,11 @@ export default async function handler(req, res) {
       });
 
       uploadedUrls.push({
-        filename: file.originalFilename,
-        url: blob.url,
-        size: file.size,
-        uploadedAt: new Date().toISOString(),
+        file_name: file.originalFilename,
+        public_url: blob.url,
+        size_bytes: file.size,
+        uploaded_at: new Date().toISOString(),
+        mime_type: file.mimetype,
       });
 
       // Usuń tymczasowy plik

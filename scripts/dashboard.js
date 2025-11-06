@@ -1,4 +1,4 @@
-const SESSION_STORAGE_KEY = "hair-analyzer-session-id";
+const SESSION_STORAGE_KEY = "sessionId";
 
 const gallery = document.getElementById("session-gallery");
 const statusLabel = document.getElementById("dashboard-status");
@@ -98,7 +98,7 @@ const fetchUploads = async (sessionId) => {
   }
 };
 
-const sessionId = window.localStorage.getItem(SESSION_STORAGE_KEY);
+const sessionId = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
 
 if (!sessionId) {
   renderEmptyState(

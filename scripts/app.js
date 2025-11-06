@@ -51,16 +51,16 @@ function initDropZone() {
   // Drag & drop
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    dropZone.classList.add('drag-over');
+    dropZone.classList.add('dragover');
   });
 
   dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('drag-over');
+    dropZone.classList.remove('dragover');
   });
 
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
-    dropZone.classList.remove('drag-over');
+    dropZone.classList.remove('dragover');
     handleFiles(e.dataTransfer.files);
   });
 
@@ -213,4 +213,30 @@ async function handleFormSubmit(event) {
       selectedFiles = [];
       updateFileList();
       const fileInput = document.getElementById('file-input');
-      if
+      if (fileInput) fileInput.value = '';
+    } else {
+      throw new Error(result.error || 'Nie udało się przesłać plików');
+    }
+  } catch (error) {
+    console.error('Upload error:', error);
+    showToast(error.message || 'Wystąpił błąd podczas przesyłania', 'error');
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = originalText;
+  }
+}
+
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('toast');
+  const messageElement = toast?.querySelector('.toast-message');
+  
+  if (!toast || !messageElement) return;
+  
+  messageElement.textContent = message;
+  toast.className = `toast toast-${type}`;
+  toast.hidden = false;
+  
+  setTimeout(() => {
+    toast.hidden = true;
+  }, 5000);
+}
