@@ -1,248 +1,213 @@
+// Globalne zmienne
+let selectedFiles = [];
 const MAX_FILES = 4;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
-const SESSION_STORAGE_KEY = "hair-analyzer-session-id";
+const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 
-const form = document.getElementById("upload-form");
-const fileInput = document.getElementById("file-input");
-const dropZone = document.getElementById("drop-zone");
-const fileList = document.getElementById("file-list");
-const errorMessage = document.getElementById("error-message");
-const submitButton = document.querySelector(".submit-button");
-const toast = document.getElementById("toast");
-const toastMessage = toast.querySelector(".toast-message");
-const fileItemTemplate = document.getElementById("file-item-template");
-const sessionLabel = document.getElementById("session-id");
+// Inicjalizacja
+document.addEventListener('DOMContentLoaded', () => {
+  initSessionId();
+  initDropZone();
+  initForm();
+});
 
-let files = [];
-
-const getSessionId = () => {
-  const existingSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
-  if (existingSession) {
-    return existingSession;
+function initSessionId() {
+  let sessionId = sessionStorage.getItem('sessionId');
+  if (!sessionId) {
+    sessionId = generateSessionId();
+    sessionStorage.setItem('sessionId', sessionId);
   }
-
-  const fallback = () =>
-    `session-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
-
-  const newSession = window.crypto?.randomUUID
-    ? window.crypto.randomUUID()
-    : fallback();
-
-  window.localStorage.setItem(SESSION_STORAGE_KEY, newSession);
-  return newSession;
-};
-
-const sessionId = getSessionId();
-
-if (sessionLabel) {
-  sessionLabel.textContent = sessionId;
+  document.getElementById('session-id').textContent = sessionId;
 }
 
-const formatBytes = (bytes) => {
-  const units = ["B", "KB", "MB", "GB"];
-  if (bytes === 0) return "0 B";
-  const index = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${
-    units[index]
-  }`;
-};
+function generateSessionId() {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
 
-const showError = (message) => {
-  errorMessage.textContent = message;
-};
+function initDropZone() {
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
 
-const clearError = () => {
-  errorMessage.textContent = "";
-};
+  // Kliknięcie w drop zone
+  dropZone.addEventListener('click', (e) => {
+    if (e.target !== fileInput) {
+      fileInput.click();
+    }
+  });
 
-const updateSubmitState = () => {
-  submitButton.disabled = files.length === 0 || submitButton.dataset.loading;
-};
+  // Keyboard support
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
 
-const renderFiles = () => {
-  fileList.innerHTML = "";
+  // Drag & drop
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
 
-  files.forEach((file, index) => {
-    const clone = fileItemTemplate.content.cloneNode(true);
-    clone.querySelector(".file-name").textContent = file.name;
-    clone.querySelector(".file-size").textContent = formatBytes(file.size);
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('drag-over');
+  });
 
-    const removeButton = clone.querySelector(".remove-button");
-    removeButton.addEventListener("click", () => {
-      files.splice(index, 1);
-      renderFiles();
-      updateSubmitState();
-    });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  });
 
+  // File input change
+  fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+  });
+}
+
+function handleFiles(files) {
+  const fileArray = Array.from(files);
+  const errorMessage = document.getElementById('error-message');
+  errorMessage.textContent = '';
+
+  // Walidacja liczby plików
+  if (selectedFiles.length + fileArray.length > MAX_FILES) {
+    errorMessage.textContent = `Możesz przesłać maksymalnie ${MAX_FILES} pliki.`;
+    return;
+  }
+
+  // Walidacja każdego pliku
+  for (const file of fileArray) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      errorMessage.textContent = 'Dozwolone są tylko pliki JPG i PNG.';
+      continue;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      errorMessage.textContent = `Plik "${file.name}" przekracza limit 5 MB.`;
+      continue;
+    }
+
+    // Dodaj plik jeśli nie istnieje
+    if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+      selectedFiles.push(file);
+    }
+  }
+
+  updateFileList();
+  updateSubmitButton();
+}
+
+function updateFileList() {
+  const fileList = document.getElementById('file-list');
+  const template = document.getElementById('file-item-template');
+  fileList.innerHTML = '';
+
+  selectedFiles.forEach((file, index) => {
+    const clone = template.content.cloneNode(true);
+    
+    clone.querySelector('.file-name').textContent = file.name;
+    clone.querySelector('.file-size').textContent = formatFileSize(file.size);
+    
+    const removeButton = clone.querySelector('.remove-button');
+    removeButton.addEventListener('click', () => removeFile(index));
+    
     fileList.appendChild(clone);
   });
-};
+}
 
-const validateFile = (file) => {
-  if (!ACCEPTED_TYPES.includes(file.type)) {
-    return "Dozwolone są tylko pliki JPG i PNG.";
-  }
+function removeFile(index) {
+  selectedFiles.splice(index, 1);
+  updateFileList();
+  updateSubmitButton();
+  document.getElementById('error-message').textContent = '';
+}
 
-  if (file.size > MAX_FILE_SIZE) {
-    return `Plik ${file.name} przekracza limit 5 MB.`;
-  }
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
 
-  return null;
-};
+function updateSubmitButton() {
+  const submitButton = document.querySelector('.submit-button');
+  submitButton.disabled = selectedFiles.length === 0;
+}
 
-const addFiles = (newFiles) => {
-  const availableSlots = MAX_FILES - files.length;
+function initForm() {
+  const form = document.getElementById('upload-form');
+  form.addEventListener('submit', handleFormSubmit);
+}
 
-  if (availableSlots <= 0) {
-    showError(`Możesz przesłać maksymalnie ${MAX_FILES} pliki.`);
+async function handleFormSubmit(event) {
+  event.preventDefault();
+  
+  if (selectedFiles.length === 0) {
+    showToast('Wybierz przynajmniej jeden plik', 'error');
     return;
   }
 
-  const filesToAdd = Array.from(newFiles).slice(0, availableSlots);
-  const errors = [];
-
-  filesToAdd.forEach((file) => {
-    const validationError = validateFile(file);
-    if (validationError) {
-      errors.push(validationError);
-      return;
-    }
-
-    files.push(file);
+  const formData = new FormData();
+  selectedFiles.forEach(file => {
+    formData.append('files', file);
   });
 
-  if (errors.length > 0) {
-    showError(errors[0]);
-  } else {
-    clearError();
-  }
-
-  renderFiles();
-  updateSubmitState();
-};
-
-const handleDrop = (event) => {
-  event.preventDefault();
-  dropZone.classList.remove("dragover");
-
-  if (event.dataTransfer?.files) {
-    addFiles(event.dataTransfer.files);
-  }
-};
-
-const fileToPayload = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("Nie udało się odczytać pliku."));
-        return;
-      }
-      const base64 = result.split(",")[1];
-      resolve({
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        data: base64,
-      });
-    };
-    reader.onerror = () => reject(reader.error || new Error("Błąd odczytu."));
-    reader.readAsDataURL(file);
-  });
-
-const toggleLoading = (isLoading) => {
-  if (isLoading) {
-    submitButton.dataset.loading = "true";
-    submitButton.disabled = true;
-    submitButton.textContent = "Przesyłanie...";
-  } else {
-    delete submitButton.dataset.loading;
-    submitButton.textContent = "Prześlij";
-    updateSubmitState();
-  }
-};
-
-const uploadFiles = async () => {
-  toggleLoading(true);
-  clearError();
+  const submitButton = document.querySelector('.submit-button');
+  const originalText = submitButton.textContent;
+  submitButton.disabled = true;
+  submitButton.textContent = 'Przesyłanie...';
 
   try {
-    const payloadFiles = await Promise.all(files.map(fileToPayload));
-    const response = await fetch("/api/upload", {
-      method: "POST",
+    const sessionId = sessionStorage.getItem('sessionId');
+    
+    const response = await fetch('/api/upload', {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'X-Session-ID': sessionId,
       },
-      body: JSON.stringify({ sessionId, files: payloadFiles }),
+      body: formData,
     });
 
-    const payload = await response.json().catch(() => null);
+    const result = await response.json();
 
-    if (!response.ok) {
-      throw new Error(payload?.error || "Nie udało się przesłać plików.");
+    if (response.ok) {
+      showToast('Zdjęcia zostały przesłane pomyślnie!', 'success');
+      
+      // Zapisz URLs do localStorage
+      const existingFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+      const allFiles = [...existingFiles, ...result.files];
+      localStorage.setItem('uploadedFiles', JSON.stringify(allFiles));
+      
+      // Wyczyść formularz
+      selectedFiles = [];
+      updateFileList();
+      document.getElementById('file-input').value = '';
+      
+      // Przekieruj do dashboardu po 1.5s
+      setTimeout(() => {
+        window.location.href = 'dashboard.html';
+      }, 1500);
+    } else {
+      showToast(result.error || 'Błąd podczas przesyłania', 'error');
     }
-
-    files = [];
-    renderFiles();
-    updateSubmitState();
-    showToast(
-      `Przesłano ${payload?.files?.length || 0} plik(i). Możesz sprawdzić je w dashboardzie.`
-    );
   } catch (error) {
-    showError(error.message || "Wystąpił nieoczekiwany błąd.");
+    console.error('Upload error:', error);
+    showToast('Błąd połączenia z serwerem', 'error');
   } finally {
-    toggleLoading(false);
+    submitButton.disabled = false;
+    submitButton.textContent = originalText;
   }
-};
+}
 
-dropZone.addEventListener("dragover", (event) => {
-  event.preventDefault();
-  dropZone.classList.add("dragover");
-});
-
-dropZone.addEventListener("dragleave", () => {
-  dropZone.classList.remove("dragover");
-});
-
-dropZone.addEventListener("drop", handleDrop);
-
-dropZone.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    fileInput.click();
-  }
-});
-
-dropZone.addEventListener("click", () => fileInput.click());
-
-fileInput.addEventListener("change", (event) => {
-  addFiles(event.target.files);
-  fileInput.value = "";
-});
-
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  if (files.length === 0) {
-    showError("Dodaj przynajmniej jeden plik.");
-    return;
-  }
-
-  uploadFiles();
-});
-
-const showToast = (message) => {
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('toast');
+  const toastMessage = toast.querySelector('.toast-message');
+  
   toastMessage.textContent = message;
+  toast.className = `toast toast-${type}`;
   toast.hidden = false;
-  requestAnimationFrame(() => toast.classList.add("show"));
 
   setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => {
-      toast.hidden = true;
-      toastMessage.textContent = "";
-    }, 300);
-  }, 2500);
-};
+    toast.hidden = true;
+  }, 3000);
+}
