@@ -17,10 +17,14 @@ export default async function handler(req, res) {
   // Sprawdź czy API key jest ustawiony
   if (!process.env.OPENAI_API_KEY) {
     console.error('OPENAI_API_KEY not configured');
+    console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('BLOB')));
     return res.status(500).json({ 
-      error: 'Konfiguracja AI nie jest dostępna. Skontaktuj się z administratorem.' 
+      error: 'Konfiguracja AI nie jest dostępna. Skontaktuj się z administratorem.',
+      hint: 'Ustaw OPENAI_API_KEY w Environment Variables'
     });
   }
+
+  console.log('OpenAI API Key configured:', process.env.OPENAI_API_KEY?.substring(0, 10) + '...');
 
   try {
     const { imageUrl, metadata } = req.body;
