@@ -2,9 +2,6 @@ import { put } from '@vercel/blob';
 import { IncomingForm } from 'formidable';
 import { readFileSync, unlinkSync } from 'fs';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-
 export const config = {
   api: {
     bodyParser: false, // Wyłącz domyślny parser
@@ -30,14 +27,6 @@ export default async function handler(req, res) {
     console.error('BLOB_READ_WRITE_TOKEN not configured');
     return res.status(500).json({ 
       error: 'Konfiguracja serwera jest niepełna. Skontaktuj się z administratorem.' 
-    });
-  }
-
-  // Sprawdź konfigurację Supabase
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.error('Supabase configuration missing');
-    return res.status(500).json({ 
-      error: 'Konfiguracja bazy danych jest niepełna.' 
     });
   }
 
@@ -98,40 +87,14 @@ export default async function handler(req, res) {
 
       console.log(`Successfully uploaded: ${blob.url}`);
 
-      const fileData = {
+      uploadedUrls.push({
         file_name: file.originalFilename,
         public_url: blob.url,
         size_bytes: file.size,
         uploaded_at: new Date().toISOString(),
         mime_type: file.mimetype,
-      };
-
-      uploadedUrls.push(fileData);
-
-      // Zapisz metadane do Supabase
-      try {
-        const supabaseResponse = await fetch(`${SUPABASE_URL}/rest/v1/photos`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({
-            session_id: sessionId,
-            ...fileData
-          })
-        });
-
-        if (!supabaseResponse.ok) {
-          console.error(`Failed to save metadata to Supabase: ${supabaseResponse.status}`);
-          // Nie przerywamy procesu, ale logujemy błąd
-        }
-      } catch (supabaseError) {
-        console.error('Supabase save error:', supabaseError);
-        // Nie przerywamy procesu
-      }
+        session_id: sessionId,
+      });
 
       // Usuń tymczasowy plik
       unlinkSync(file.filepath);

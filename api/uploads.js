@@ -1,20 +1,4 @@
-const REQUIRED_ENV_VARS = ["SUPABASE_URL", "SUPABASE_ANON_KEY"];
-
-REQUIRED_ENV_VARS.forEach((key) => {
-  if (!process.env[key]) {
-    console.warn(`[api/uploads] Missing environment variable: ${key}`);
-  }
-});
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-
-const headers = (extra = {}) => ({
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-  ...extra,
-});
+import { list } from '@vercel/blob';
 
 export default async function handler(req, res) {
   // CORS headers
@@ -31,10 +15,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return res.status(500).json({
-      error:
-        "Brak konfiguracji Supabase. Upewnij się, że zmienne środowiskowe są ustawione na Vercel.",
+  // Sprawdź czy token Blob jest ustawiony
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error('BLOB_READ_WRITE_TOKEN not configured');
+    return res.status(500).json({ 
+      error: 'Konfiguracja serwera jest niepełna.' 
     });
   }
 
@@ -45,29 +30,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const url = new URL(`${SUPABASE_URL}/rest/v1/photos`);
-    url.searchParams.set("session_id", `eq.${sessionId}`);
-    url.searchParams.set("order", "uploaded_at.desc");
-    url.searchParams.set(
-      "select",
-      "id,session_id,file_name,public_url,uploaded_at,mime_type,size_bytes"
-    );
-
-    const response = await fetch(url, {
-      headers: headers({
-        Accept: "application/json",
-      }),
+    // Pobierz listę plików z Vercel Blob dla danej sesji
+    const { blobs } = await list({
+      prefix: `${sessionId}/`,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
-    if (!response.ok) {
-      const errorPayload = await response.json().catch(() => null);
-      throw new Error(
-        errorPayload?.message ||
-          "Nie udało się pobrać listy przesłanych plików z bazy danych."
-      );
-    }
+    // Przekształć dane do formatu oczekiwanego przez frontend
+    const files = blobs.map(blob => ({
+      id: blob.pathname,
+      session_id: sessionId,
+      file_name: blob.pathname.split('/').pop().replace(/^\d+_/, ''), // usuń timestamp
+      public_url: blob.url,
+      uploaded_at: blob.uploadedAt,
+      mime_type: getContentTypeFromUrl(blob.url),
+      size_bytes: blob.size,
+    }));
 
-    const files = await response.json();
+    // Sortuj od najnowszych
+    files.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
 
     return res.status(200).json({
       sessionId,
@@ -76,8 +57,25 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error("[api/uploads]", error);
     return res.status(500).json({
-      error:
-        error?.message || "Wystąpił nieoczekiwany błąd podczas pobierania plików.",
+      error: error?.message || "Wystąpił nieoczekiwany błąd podczas pobierania plików.",
     });
   }
 };
+
+// Pomocnicza funkcja do określenia content-type na podstawie rozszerzenia
+function getContentTypeFromUrl(url) {
+  const extension = url.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    default:
+      return 'application/octet-stream';
+  }
+}

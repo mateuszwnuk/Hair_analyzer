@@ -204,9 +204,13 @@ async function handleFormSubmit(event) {
     if (response.ok && result.success) {
       showToast('Zdjęcia zostały przesłane pomyślnie!', 'success');
       
-      // Zapisz URLs do localStorage
+      // Zapisz pliki do localStorage z session_id
       const existingFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
-      const allFiles = [...existingFiles, ...result.files];
+      const filesWithSession = result.files.map(file => ({
+        ...file,
+        session_id: sessionId
+      }));
+      const allFiles = [...existingFiles, ...filesWithSession];
       localStorage.setItem('uploadedFiles', JSON.stringify(allFiles));
       
       // Wyczyść formularz

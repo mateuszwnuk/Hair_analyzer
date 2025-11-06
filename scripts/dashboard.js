@@ -79,22 +79,45 @@ const fetchUploads = async (sessionId) => {
   statusLabel.textContent = "Ładowanie danych...";
 
   try {
+    // Najpierw spróbuj pobrać z API (Vercel Blob)
     const response = await fetch(`/api/uploads?sessionId=${encodeURIComponent(sessionId)}`);
     const payload = await response.json().catch(() => null);
 
-    if (!response.ok) {
-      throw new Error(payload?.error || "Nie udało się pobrać plików.");
+    let files = [];
+
+    if (response.ok && Array.isArray(payload?.files)) {
+      files = payload.files;
+    } else {
+      // Fallback do localStorage jeśli API nie działa
+      console.warn('API not available, using localStorage fallback');
+      const localFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+      files = localFiles.filter(file => file.session_id === sessionId);
     }
 
-    if (!Array.isArray(payload?.files) || payload.files.length === 0) {
+    if (files.length === 0) {
       renderEmptyState("Brak przesłanych plików w tej sesji.");
       return;
     }
 
     statusLabel.textContent = "";
-    renderGallery(payload.files);
+    renderGallery(files);
   } catch (error) {
-    renderEmptyState(error.message || "Wystąpił błąd podczas ładowania danych.");
+    console.error('Error fetching uploads:', error);
+    
+    // Fallback do localStorage w przypadku błędu
+    try {
+      const localFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
+      const sessionFiles = localFiles.filter(file => file.session_id === sessionId);
+      
+      if (sessionFiles.length > 0) {
+        statusLabel.textContent = "Dane załadowane z pamięci lokalnej.";
+        renderGallery(sessionFiles);
+      } else {
+        renderEmptyState("Brak przesłanych plików w tej sesji.");
+      }
+    } catch (localError) {
+      renderEmptyState(error.message || "Wystąpił błąd podczas ładowania danych.");
+    }
   }
 };
 
