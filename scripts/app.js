@@ -1,6 +1,7 @@
 const MAX_FILES = 4;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"];
+const SESSION_STORAGE_KEY = "hair-analyzer-session-id";
 
 const form = document.getElementById("upload-form");
 const fileInput = document.getElementById("file-input");
@@ -11,14 +12,40 @@ const submitButton = document.querySelector(".submit-button");
 const toast = document.getElementById("toast");
 const toastMessage = toast.querySelector(".toast-message");
 const fileItemTemplate = document.getElementById("file-item-template");
+const sessionLabel = document.getElementById("session-id");
 
 let files = [];
+
+const getSessionId = () => {
+  const existingSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  if (existingSession) {
+    return existingSession;
+  }
+
+  const fallback = () =>
+    `session-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+
+  const newSession = window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : fallback();
+
+  window.localStorage.setItem(SESSION_STORAGE_KEY, newSession);
+  return newSession;
+};
+
+const sessionId = getSessionId();
+
+if (sessionLabel) {
+  sessionLabel.textContent = sessionId;
+}
 
 const formatBytes = (bytes) => {
   const units = ["B", "KB", "MB", "GB"];
   if (bytes === 0) return "0 B";
   const index = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${
+    units[index]
+  }`;
 };
 
 const showError = (message) => {
@@ -30,7 +57,7 @@ const clearError = () => {
 };
 
 const updateSubmitState = () => {
-  submitButton.disabled = files.length === 0;
+  submitButton.disabled = files.length === 0 || submitButton.dataset.loading;
 };
 
 const renderFiles = () => {
@@ -104,6 +131,72 @@ const handleDrop = (event) => {
   }
 };
 
+const fileToPayload = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Nie udało się odczytać pliku."));
+        return;
+      }
+      const base64 = result.split(",")[1];
+      resolve({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data: base64,
+      });
+    };
+    reader.onerror = () => reject(reader.error || new Error("Błąd odczytu."));
+    reader.readAsDataURL(file);
+  });
+
+const toggleLoading = (isLoading) => {
+  if (isLoading) {
+    submitButton.dataset.loading = "true";
+    submitButton.disabled = true;
+    submitButton.textContent = "Przesyłanie...";
+  } else {
+    delete submitButton.dataset.loading;
+    submitButton.textContent = "Prześlij";
+    updateSubmitState();
+  }
+};
+
+const uploadFiles = async () => {
+  toggleLoading(true);
+  clearError();
+
+  try {
+    const payloadFiles = await Promise.all(files.map(fileToPayload));
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sessionId, files: payloadFiles }),
+    });
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(payload?.error || "Nie udało się przesłać plików.");
+    }
+
+    files = [];
+    renderFiles();
+    updateSubmitState();
+    showToast(
+      `Przesłano ${payload?.files?.length || 0} plik(i). Możesz sprawdzić je w dashboardzie.`
+    );
+  } catch (error) {
+    showError(error.message || "Wystąpił nieoczekiwany błąd.");
+  } finally {
+    toggleLoading(false);
+  }
+};
+
 dropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
   dropZone.classList.add("dragover");
@@ -137,8 +230,7 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  clearError();
-  showToast(`${files.length} plik(i) gotowe do przesłania.`);
+  uploadFiles();
 });
 
 const showToast = (message) => {

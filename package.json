@@ -1,0 +1,17 @@
+{
+  "name": "hair_analyzer",
+  "version": "1.0.0",
+  "description": "Prototypowa aplikacja webowa do przesyłania zdjęć skóry głowy w ramach analizy trychologicznej.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"No automated tests defined\" && exit 0"
+  },
+  "keywords": [
+    "trichology",
+    "image-upload",
+    "vercel"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
