@@ -130,6 +130,8 @@ const renderGallery = (files) => {
     const name = clone.querySelector(".file-name");
     const meta = clone.querySelector(".meta");
     const patientInfo = clone.querySelector(".patient-info");
+    const analyzeButton = clone.querySelector(".analyze-ai-button");
+    const aiResultDiv = clone.querySelector(".ai-result");
 
     if (image) image.src = file.public_url;
     if (name) name.textContent = file.file_name;
@@ -164,6 +166,46 @@ const renderGallery = (files) => {
       if (patientInfo) {
         patientInfo.innerHTML = '<div class="info-item"><span class="info-label">Brak metadanych</span></div>';
       }
+    }
+    
+    // Obsługa przycisku analizy AI
+    if (analyzeButton) {
+      const fileId = file.id || file.public_url;
+      
+      // Sprawdź czy już istnieje analiza
+      const existingAnalysis = getAnalysisFromStorage(fileId);
+      if (existingAnalysis && aiResultDiv) {
+        aiResultDiv.style.display = 'block';
+        aiResultDiv.className = 'ai-result success';
+        aiResultDiv.innerHTML = `
+          <div class="ai-result-title">✅ ${existingAnalysis.problem}</div>
+          <div class="ai-result-text">Stopień: ${existingAnalysis.severity} | Pewność: ${existingAnalysis.confidence}%</div>
+        `;
+        analyzeButton.innerHTML = `
+          <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          Zobacz analizę
+        `;
+      }
+      
+      analyzeButton.addEventListener('click', () => {
+        if (existingAnalysis) {
+          // Pokaż istniejącą analizę
+          openAIModal();
+          showAnalysisResults(existingAnalysis);
+        } else {
+          // Wykonaj nową analizę
+          analyzeButton.disabled = true;
+          analyzeButton.textContent = 'Analizuję...';
+          
+          analyzeImage(file.public_url, file.metadata, fileId)
+            .finally(() => {
+              analyzeButton.disabled = false;
+            });
+        }
+      });
     }
 
     gallery.appendChild(clone);
@@ -226,7 +268,260 @@ document.addEventListener('DOMContentLoaded', () => {
       if (sessionId) fetchUploads(sessionId);
     });
   }
+  
+  // Inicjalizacja modala AI
+  initAIModal();
 });
+
+// ====== FUNKCJE ANALIZY AI ======
+
+function initAIModal() {
+  const modal = document.getElementById('ai-modal');
+  if (!modal) return;
+  
+  const closeBtn = modal.querySelector('.modal-close');
+  const overlay = modal.querySelector('.modal-overlay');
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => closeAIModal());
+  }
+  
+  if (overlay) {
+    overlay.addEventListener('click', () => closeAIModal());
+  }
+  
+  // ESC key zamyka modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) {
+      closeAIModal();
+    }
+  });
+}
+
+function openAIModal() {
+  const modal = document.getElementById('ai-modal');
+  if (modal) {
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeAIModal() {
+  const modal = document.getElementById('ai-modal');
+  if (modal) {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+  }
+}
+
+function showLoadingState() {
+  const modal = document.getElementById('ai-modal');
+  if (!modal) return;
+  
+  const loadingState = modal.querySelector('.loading-state');
+  const resultsDiv = modal.querySelector('.analysis-results');
+  
+  if (loadingState) loadingState.style.display = 'flex';
+  if (resultsDiv) {
+    resultsDiv.style.display = 'none';
+    resultsDiv.innerHTML = '';
+  }
+}
+
+function showAnalysisResults(analysis) {
+  const modal = document.getElementById('ai-modal');
+  if (!modal) return;
+  
+  const loadingState = modal.querySelector('.loading-state');
+  const resultsDiv = modal.querySelector('.analysis-results');
+  
+  if (loadingState) loadingState.style.display = 'none';
+  if (!resultsDiv) return;
+  
+  resultsDiv.style.display = 'block';
+  
+  // Generuj HTML wyników
+  const html = `
+    <div class="analysis-card">
+      <h3>
+        📋 Diagnoza
+        <span class="severity-badge severity-${analysis.severity}">${analysis.severity}</span>
+      </h3>
+      <div class="analysis-problem">
+        <strong>${analysis.problem}</strong> (${analysis.problemCategory})
+      </div>
+      <div style="margin-top: 0.5rem;">
+        <small style="color: var(--muted-color);">Pewność: ${analysis.confidence}%</small>
+        <div class="confidence-bar">
+          <div class="confidence-fill" style="width: ${analysis.confidence}%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="analysis-card">
+      <h3>🔍 Szczegółowa analiza</h3>
+      <p class="detailed-text">${analysis.detailedAnalysis}</p>
+    </div>
+
+    ${analysis.symptoms && analysis.symptoms.length > 0 ? `
+    <div class="analysis-card">
+      <h3>⚠️ Zaobserwowane objawy</h3>
+      <ul class="analysis-list">
+        ${analysis.symptoms.map(s => `<li>${s}</li>`).join('')}
+      </ul>
+    </div>
+    ` : ''}
+
+    ${analysis.possibleCauses && analysis.possibleCauses.length > 0 ? `
+    <div class="analysis-card">
+      <h3>🧬 Możliwe przyczyny</h3>
+      <ul class="analysis-list">
+        ${analysis.possibleCauses.map(c => `<li>${c}</li>`).join('')}
+      </ul>
+    </div>
+    ` : ''}
+
+    ${analysis.recommendations && analysis.recommendations.length > 0 ? `
+    <div class="analysis-card">
+      <h3>💡 Rekomendacje</h3>
+      <ul class="analysis-list">
+        ${analysis.recommendations.map(r => `<li>${r}</li>`).join('')}
+      </ul>
+    </div>
+    ` : ''}
+
+    ${analysis.nextSteps && analysis.nextSteps.length > 0 ? `
+    <div class="analysis-card">
+      <h3>👣 Następne kroki</h3>
+      <ul class="analysis-list">
+        ${analysis.nextSteps.map(s => `<li>${s}</li>`).join('')}
+      </ul>
+    </div>
+    ` : ''}
+
+    <div class="disclaimer">
+      <strong>⚕️ Ważna informacja:</strong> Ta analiza jest narzędziem pomocniczym i nie zastępuje profesjonalnej konsultacji medycznej. 
+      W przypadku problemów ze skórą głowy zalecamy wizytę u dermatologa lub trycholog.
+    </div>
+  `;
+  
+  resultsDiv.innerHTML = html;
+}
+
+async function analyzeImage(imageUrl, metadata, fileId) {
+  console.log('Starting AI analysis for:', imageUrl);
+  
+  try {
+    openAIModal();
+    showLoadingState();
+    
+    const response = await fetch('/api/analyze-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        imageUrl: imageUrl,
+        metadata: metadata
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Błąd podczas analizy');
+    }
+
+    if (!result.success || !result.analysis) {
+      throw new Error('Nieprawidłowa odpowiedź serwera');
+    }
+
+    console.log('Analysis completed:', result.analysis);
+    
+    // Pokaż wyniki
+    showAnalysisResults(result.analysis);
+    
+    // Zapisz analizę
+    saveAnalysisToStorage(fileId, result.analysis);
+    
+    // Zaktualizuj UI w galerii
+    updateGalleryItemWithAnalysis(fileId, result.analysis);
+    
+    return result.analysis;
+    
+  } catch (error) {
+    console.error('Analysis error:', error);
+    
+    const modal = document.getElementById('ai-modal');
+    if (modal) {
+      const loadingState = modal.querySelector('.loading-state');
+      const resultsDiv = modal.querySelector('.analysis-results');
+      
+      if (loadingState) loadingState.style.display = 'none';
+      if (resultsDiv) {
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = `
+          <div class="analysis-card" style="background: #fef2f2; border-left: 3px solid var(--error-color);">
+            <h3 style="color: var(--error-color);">❌ Błąd analizy</h3>
+            <p>${error.message}</p>
+            <p style="font-size: 0.85rem; color: var(--muted-color); margin-top: 0.5rem;">
+              Spróbuj ponownie za chwilę. Jeśli problem się powtarza, skontaktuj się z administratorem.
+            </p>
+          </div>
+        `;
+      }
+    }
+    
+    return null;
+  }
+}
+
+function saveAnalysisToStorage(fileId, analysis) {
+  try {
+    const analyses = JSON.parse(localStorage.getItem('aiAnalyses') || '{}');
+    analyses[fileId] = {
+      ...analysis,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem('aiAnalyses', JSON.stringify(analyses));
+    console.log('Analysis saved to localStorage');
+  } catch (error) {
+    console.error('Failed to save analysis:', error);
+  }
+}
+
+function getAnalysisFromStorage(fileId) {
+  try {
+    const analyses = JSON.parse(localStorage.getItem('aiAnalyses') || '{}');
+    return analyses[fileId] || null;
+  } catch (error) {
+    console.error('Failed to get analysis:', error);
+    return null;
+  }
+}
+
+function updateGalleryItemWithAnalysis(fileId, analysis) {
+  // Znajdź element w galerii i zaktualizuj
+  const galleryItems = document.querySelectorAll('.gallery-item');
+  galleryItems.forEach(item => {
+    const img = item.querySelector('img');
+    if (img && img.src.includes(fileId)) {
+      const resultDiv = item.querySelector('.ai-result');
+      const button = item.querySelector('.analyze-ai-button');
+      
+      if (resultDiv && button) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'ai-result success';
+        resultDiv.innerHTML = `
+          <div class="ai-result-title">✅ ${analysis.problem}</div>
+          <div class="ai-result-text">Stopień: ${analysis.severity} | Pewność: ${analysis.confidence}%</div>
+        `;
+        
+        button.textContent = '👁️ Zobacz analizę';
+      }
+    }
+  });
+}
 
 function initDropZone() {
   const dropZone = document.getElementById('drop-zone');
