@@ -1,0 +1,201 @@
+:root {
+  color-scheme: light dark;
+  --bg-color: #f4f6fb;
+  --card-color: #ffffff;
+  --accent-color: #2f6aff;
+  --accent-color-hover: #1d52d6;
+  --text-color: #111827;
+  --muted-color: #6b7280;
+  --error-color: #d61f45;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(160deg, rgba(47, 106, 255, 0.1), rgba(255, 255, 255, 0.7));
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color);
+}
+
+.container {
+  background-color: var(--card-color);
+  width: min(640px, 95vw);
+  padding: 2.5rem;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+header h1 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted-color);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.drop-zone {
+  position: relative;
+  border: 2px dashed rgba(47, 106, 255, 0.4);
+  border-radius: 18px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background-color: rgba(47, 106, 255, 0.04);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  cursor: pointer;
+  outline: none;
+}
+
+.drop-zone:hover,
+.drop-zone:focus {
+  border-color: var(--accent-color);
+  background-color: rgba(47, 106, 255, 0.08);
+}
+
+.drop-zone.dragover {
+  border-color: var(--accent-color);
+  background-color: rgba(47, 106, 255, 0.12);
+}
+
+.drop-icon {
+  width: 48px;
+  height: 48px;
+  fill: var(--accent-color);
+  margin-bottom: 1rem;
+}
+
+.drop-zone input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.hint {
+  margin-top: 0.5rem;
+  color: var(--muted-color);
+  font-size: 0.85rem;
+}
+
+.file-list {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(47, 106, 255, 0.08);
+  border-radius: 12px;
+}
+
+.file-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-name {
+  font-weight: 600;
+}
+
+.file-size {
+  color: var(--muted-color);
+  font-size: 0.85rem;
+}
+
+.remove-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--muted-color);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.remove-button:hover,
+.remove-button:focus {
+  background-color: rgba(47, 106, 255, 0.16);
+  color: var(--accent-color);
+}
+
+.error-message {
+  margin-top: 1rem;
+  color: var(--error-color);
+  font-weight: 600;
+  min-height: 1.25rem;
+}
+
+.submit-button {
+  align-self: flex-end;
+  border: none;
+  background: linear-gradient(135deg, var(--accent-color), #6f9eff);
+  color: #fff;
+  padding: 0.85rem 2.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 15px 35px rgba(47, 106, 255, 0.28);
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.submit-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 45px rgba(47, 106, 255, 0.35);
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: var(--accent-color);
+  color: #fff;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  box-shadow: 0 12px 25px rgba(47, 106, 255, 0.35);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding: 1.75rem 1.5rem;
+  }
+
+  .drop-zone {
+    padding: 2.5rem 1rem;
+  }
+}

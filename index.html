@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hair Analyzer - Upload zdjęć</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Hair Analyzer</h1>
+      <p class="subtitle">Prześlij do 4 zdjęć skóry głowy w formacie JPG lub PNG (maksymalnie 5 MB na plik).</p>
+    </header>
+
+    <form id="upload-form" novalidate>
+      <div id="drop-zone" class="drop-zone" role="button" tabindex="0">
+        <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3a4 4 0 0 0-4 4v1H7a3 3 0 0 0-3 3v6a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-6a3 3 0 0 0-3-3h-1V7a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v1h-4V7a2 2 0 0 1 2-2zm-5 5h10a1 1 0 0 1 1 1v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a1 1 0 0 1 1-1zm5 1.5a.75.75 0 0 0-.75.75V16H10a.75.75 0 0 0 0 1.5h4A.75.75 0 0 0 14.75 16H13v-3.75A.75.75 0 0 0 12 11.5z" />
+        </svg>
+        <p><strong>Kliknij, aby wybrać pliki</strong> lub przeciągnij je w to miejsce.</p>
+        <p class="hint">Obsługiwane formaty: JPG, PNG. Maksymalnie 4 pliki po 5 MB.</p>
+        <input id="file-input" type="file" accept="image/png, image/jpeg" multiple aria-label="Wybierz zdjęcia" />
+      </div>
+
+      <section aria-live="polite" aria-atomic="true">
+        <ul id="file-list" class="file-list"></ul>
+        <p id="error-message" class="error-message" role="alert"></p>
+      </section>
+
+      <button type="submit" class="submit-button" disabled>Prześlij</button>
+    </form>
+  </main>
+
+  <template id="file-item-template">
+    <li class="file-item">
+      <div class="file-meta">
+        <span class="file-name"></span>
+        <span class="file-size"></span>
+      </div>
+      <button type="button" class="remove-button" aria-label="Usuń plik">&times;</button>
+    </li>
+  </template>
+
+  <div id="toast" role="status" aria-live="polite" class="toast" hidden>
+    <span class="toast-message"></span>
+  </div>
+
+  <script src="scripts/app.js"></script>
+</body>
+</html>
