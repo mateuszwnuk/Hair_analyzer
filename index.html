@@ -47,12 +47,29 @@
         </div>
 
         <form id="upload-form" novalidate>
+          <!-- Wybór źródła -->
+          <div class="source-selector">
+            <button type="button" id="btn-from-disk" class="source-button active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+              </svg>
+              Z dysku
+            </button>
+            <button type="button" id="btn-from-camera" class="source-button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Aparat
+            </button>
+          </div>
+          
           <div id="drop-zone" class="drop-zone" role="button" tabindex="0">
             <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3a4 4 0 0 0-4 4v1H7a3 3 0 0 0-3 3v6a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-6a3 3 0 0 0-3-3h-1V7a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v1h-4V7a2 2 0 0 1 2-2zm-5 5h10a1 1 0 0 1 1 1v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-6a1 1 0 0 1 1-1zm5 1.5a.75.75 0 0 0-.75.75V16H10a.75.75 0 0 0 0 1.5h4A.75.75 0 0 0 14.75 16H13v-3.75A.75.75 0 0 0 12 11.5z" />
             </svg>
-            <p><strong>Kliknij, aby wybrać pliki</strong> lub przeciągnij je w to miejsce.</p>
-            <p class="hint">Obsługiwane formaty: JPG, PNG. Maksymalnie 4 pliki po 5 MB.</p>
+            <p><strong id="drop-zone-text">Kliknij, aby wybrać pliki</strong> lub przeciągnij je w to miejsce.</p>
+            <p class="hint" id="drop-zone-hint">Obsługiwane formaty: JPG, PNG. Maksymalnie 4 pliki po 5 MB.</p>
             <input id="file-input" type="file" accept="image/png, image/jpeg" multiple aria-label="Wybierz zdjęcia" />
           </div>
 

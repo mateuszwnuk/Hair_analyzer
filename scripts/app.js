@@ -1,6 +1,7 @@
 // Globalne zmienne
 let selectedFiles = [];
 let currentTab = 'upload';
+let currentSource = 'disk'; // 'disk' or 'camera'
 const MAX_FILES = 4;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
@@ -9,6 +10,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 document.addEventListener('DOMContentLoaded', () => {
   initSessionId();
   initTabs();
+  initSourceSelector();
   initDropZone();
   initForm();
   initMetadataForm();
@@ -67,6 +69,43 @@ function switchTab(tabName) {
   
   // Aktualizuj URL hash
   window.history.replaceState(null, null, tabName === 'upload' ? '#' : `#${tabName}`);
+}
+
+// Source Selector
+function initSourceSelector() {
+  const btnDisk = document.getElementById('btn-from-disk');
+  const btnCamera = document.getElementById('btn-from-camera');
+  const fileInput = document.getElementById('file-input');
+  const dropZoneText = document.getElementById('drop-zone-text');
+  const dropZoneHint = document.getElementById('drop-zone-hint');
+  
+  if (!btnDisk || !btnCamera || !fileInput) return;
+  
+  btnDisk.addEventListener('click', () => {
+    currentSource = 'disk';
+    btnDisk.classList.add('active');
+    btnCamera.classList.remove('active');
+    
+    // Standardowy input dla plików z dysku
+    fileInput.removeAttribute('capture');
+    fileInput.setAttribute('accept', 'image/png, image/jpeg');
+    
+    if (dropZoneText) dropZoneText.textContent = 'Kliknij, aby wybrać pliki';
+    if (dropZoneHint) dropZoneHint.textContent = 'Obsługiwane formaty: JPG, PNG. Maksymalnie 4 pliki po 5 MB.';
+  });
+  
+  btnCamera.addEventListener('click', () => {
+    currentSource = 'camera';
+    btnCamera.classList.add('active');
+    btnDisk.classList.remove('active');
+    
+    // Input z dostępem do kamery (mobile)
+    fileInput.setAttribute('capture', 'environment');
+    fileInput.setAttribute('accept', 'image/*');
+    
+    if (dropZoneText) dropZoneText.textContent = 'Kliknij, aby zrobić zdjęcie';
+    if (dropZoneHint) dropZoneHint.textContent = 'Użyj aparatu telefonu lub kamerki. Maksymalnie 4 zdjęcia.';
+  });
 }
 
 // Funkcje galerii (przeniesione z dashboard.js)

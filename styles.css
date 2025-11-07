@@ -29,12 +29,19 @@ body {
 
 /* App Container */
 .app-container {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 0.75rem;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+@media (min-width: 1400px) {
+  .app-container {
+    max-width: 1400px;
+    padding: 1rem;
+  }
 }
 
 /* Header */
@@ -144,6 +151,46 @@ body {
 /* Form Styles */
 #upload-form {
   padding: 1.25rem;
+}
+
+/* Source Selector */
+.source-selector {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.source-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  color: var(--muted-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.source-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.source-button:hover {
+  border-color: var(--accent-color);
+  color: var(--text-color);
+}
+
+.source-button.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
 }
 
 /* Preview Container */
@@ -814,13 +861,17 @@ body {
 .error-message {
   margin-top: 1rem;
   color: var(--error-color);
-  font-weight: 600;
-  min-height: 1.25rem;
+  font-weight: 500;
   text-align: center;
-  background: rgba(214, 31, 69, 0.1);
+  background: rgba(239, 68, 68, 0.15);
   padding: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid rgba(214, 31, 69, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-size: 0.85rem;
+}
+
+.error-message:empty {
+  display: none;
 }
 
 /* Toast */
@@ -1162,17 +1213,206 @@ body {
   letter-spacing: 0.5px;
 }
 
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  :root {
+    font-size: 13px;
+  }
+  
+  .app-container {
+    padding: 0.5rem;
+  }
+  
+  .app-header {
+    padding: 0.6rem 1rem;
+  }
+  
+  .header-content h1 {
+    font-size: 1.1rem;
+  }
+  
+  .app-subtitle {
+    font-size: 0.75rem;
+  }
+  
+  .tab-navigation {
+    padding: 0.3rem;
+    gap: 0.3rem;
+  }
+  
+  .tab-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    gap: 0.3rem;
+  }
+  
+  .tab-icon {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .card {
+    border-radius: 6px;
+  }
+  
+  .card-header {
+    padding: 0.85rem 1rem 0.6rem;
+  }
+  
+  .card-header h2 {
+    font-size: 1rem;
+  }
+  
+  #upload-form {
+    padding: 1rem;
+  }
+  
+  .source-selector {
+    gap: 0.6rem;
+    margin-bottom: 0.85rem;
+  }
+  
+  .source-button {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+    gap: 0.4rem;
+  }
+  
+  .source-button svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .drop-zone {
+    padding: 1.5rem 1rem;
+  }
+  
+  .drop-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .drop-zone p {
+    font-size: 0.8rem;
+  }
+  
+  .preview-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.6rem;
+  }
+  
+  .metadata-form,
+  .preview-container {
+    padding: 0.85rem;
+    margin: 0.85rem 0;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+  
+  .form-group-full {
+    grid-column: 1;
+  }
+  
+  .session-gallery {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .gallery-item img {
+    height: 140px;
+  }
+  
+  .case-card {
+    padding: 0.85rem;
+  }
+  
+  .case-images-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+  
+  .modal-content {
+    max-width: 95%;
+    border-radius: 8px;
+  }
+  
+  .modal-header {
+    padding: 0.85rem 1rem;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .analysis-card {
+    padding: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    font-size: 12px;
+  }
+  
+  .app-container {
+    padding: 0.4rem;
+  }
+  
+  .app-header {
+    padding: 0.5rem 0.85rem;
+  }
+  
+  .tab-button {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.75rem;
+  }
+  
+  .card-header h2 {
+    font-size: 0.95rem;
+  }
+  
+  .source-selector {
+    gap: 0.5rem;
+  }
+  
+  .source-button {
+    padding: 0.5rem 0.4rem;
+    font-size: 0.75rem;
+    gap: 0.3rem;
+  }
+  
+  .source-button svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .drop-zone {
+    padding: 1.25rem 0.85rem;
+  }
+  
+  .preview-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .case-images-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .gallery-item img {
+    height: 120px;
+  }
+}
+
 @media (max-width: 600px) {
   .session-toolbar {
     justify-content: center;
   }
-
-  .gallery-item img {
-    height: 180px;
-  }
   
   .app-footer {
-    font-size: 0.75rem;
-    padding: 1.5rem 1rem 1rem;
+    font-size: 0.65rem;
+    padding: 1.25rem 0.85rem 0.6rem;
   }
 }
