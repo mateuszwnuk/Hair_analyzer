@@ -1,7 +1,6 @@
 // Globalne zmienne
 let selectedFiles = [];
 let currentTab = 'upload';
-let currentSource = 'disk'; // 'disk' or 'camera'
 const MAX_FILES = 4;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
@@ -10,8 +9,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 document.addEventListener('DOMContentLoaded', () => {
   initSessionId();
   initTabs();
-  initSourceSelector();
-  initDropZone();
+  initCameraButtons();
   initForm();
   initMetadataForm();
   
@@ -71,40 +69,32 @@ function switchTab(tabName) {
   window.history.replaceState(null, null, tabName === 'upload' ? '#' : `#${tabName}`);
 }
 
-// Source Selector
-function initSourceSelector() {
-  const btnDisk = document.getElementById('btn-from-disk');
-  const btnCamera = document.getElementById('btn-from-camera');
+// Camera Buttons (Mobile-First)
+function initCameraButtons() {
+  const btnTakePhoto = document.getElementById('btn-take-photo');
+  const btnUploadFiles = document.getElementById('btn-upload-files');
   const fileInput = document.getElementById('file-input');
-  const dropZoneText = document.getElementById('drop-zone-text');
-  const dropZoneHint = document.getElementById('drop-zone-hint');
   
-  if (!btnDisk || !btnCamera || !fileInput) return;
+  if (!btnTakePhoto || !btnUploadFiles || !fileInput) return;
   
-  btnDisk.addEventListener('click', () => {
-    currentSource = 'disk';
-    btnDisk.classList.add('active');
-    btnCamera.classList.remove('active');
-    
-    // Standardowy input dla plików z dysku
-    fileInput.removeAttribute('capture');
-    fileInput.setAttribute('accept', 'image/png, image/jpeg');
-    
-    if (dropZoneText) dropZoneText.textContent = 'Kliknij, aby wybrać pliki';
-    if (dropZoneHint) dropZoneHint.textContent = 'Obsługiwane formaty: JPG, PNG. Maksymalnie 4 pliki po 5 MB.';
-  });
-  
-  btnCamera.addEventListener('click', () => {
-    currentSource = 'camera';
-    btnCamera.classList.add('active');
-    btnDisk.classList.remove('active');
-    
-    // Input z dostępem do kamery (mobile)
+  // Przycisk "Zrób zdjęcie" - uruchamia kamerę
+  btnTakePhoto.addEventListener('click', () => {
     fileInput.setAttribute('capture', 'environment');
     fileInput.setAttribute('accept', 'image/*');
-    
-    if (dropZoneText) dropZoneText.textContent = 'Kliknij, aby zrobić zdjęcie';
-    if (dropZoneHint) dropZoneHint.textContent = 'Użyj aparatu telefonu lub kamerki. Maksymalnie 4 zdjęcia.';
+    fileInput.click();
+  });
+  
+  // Przycisk "Wybierz z dysku" - otwiera file picker
+  btnUploadFiles.addEventListener('click', () => {
+    fileInput.removeAttribute('capture');
+    fileInput.setAttribute('accept', 'image/png, image/jpeg');
+    fileInput.click();
+  });
+  
+  // Obsługa wyboru plików
+  fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+    fileInput.value = ''; // Reset input
   });
 }
 
@@ -717,49 +707,6 @@ function updateGalleryItemWithAnalysis(fileId, analysis) {
         button.textContent = '👁️ Zobacz analizę';
       }
     }
-  });
-}
-
-function initDropZone() {
-  const dropZone = document.getElementById('drop-zone');
-  const fileInput = document.getElementById('file-input');
-
-  if (!dropZone || !fileInput) return;
-
-  // Kliknięcie w drop zone
-  dropZone.addEventListener('click', (e) => {
-    if (e.target !== fileInput) {
-      fileInput.click();
-    }
-  });
-
-  // Keyboard support
-  dropZone.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      fileInput.click();
-    }
-  });
-
-  // Drag & drop
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-  });
-
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('dragover');
-  });
-
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    handleFiles(e.dataTransfer.files);
-  });
-
-  // File input change
-  fileInput.addEventListener('change', (e) => {
-    handleFiles(e.target.files);
   });
 }
 
