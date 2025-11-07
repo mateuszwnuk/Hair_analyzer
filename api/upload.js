@@ -68,6 +68,7 @@ export default async function handler(req, res) {
 
     const uploadedUrls = [];
     const sessionId = req.headers['x-session-id'] || `session_${Date.now()}`;
+    const caseId = `case_${Date.now()}`; // Unikalne ID dla grupy zdjęć
 
     for (const file of filesArray) {
       if (!file || !file.filepath) continue;
@@ -106,7 +107,7 @@ export default async function handler(req, res) {
         }
       }
       
-      const fileName = `${sessionId}/${timestamp}_${baseFileName}${metadataString}.${extension}`;
+      const fileName = `${sessionId}/${caseId}_${timestamp}_${baseFileName}${metadataString}.${extension}`;
 
       console.log(`Uploading file: ${fileName}, size: ${file.size}, type: ${file.mimetype}`);
       

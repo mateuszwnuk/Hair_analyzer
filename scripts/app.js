@@ -110,6 +110,84 @@ const renderEmptyState = (message) => {
   if (gallery) gallery.setAttribute("aria-busy", "false");
 };
 
+const renderCaseGallery = (cases) => {
+  const gallery = document.getElementById("session-gallery");
+  const statusLabel = document.getElementById("dashboard-status");
+  
+  if (!gallery) return;
+  
+  gallery.innerHTML = "";
+  gallery.setAttribute("aria-busy", "false");
+  
+  console.log('Rendering case gallery:', cases);
+  
+  cases.forEach((caseItem) => {
+    const caseCard = document.createElement('div');
+    caseCard.className = 'case-card';
+    
+    // Nagłówek case'a z metadanymi
+    const caseHeader = document.createElement('div');
+    caseHeader.className = 'case-header';
+    
+    let headerHtml = `<h3>Case ${formatDate(caseItem.uploaded_at)}</h3>`;
+    if (caseItem.metadata) {
+      const metadata = caseItem.metadata;
+      const metaParts = [];
+      if (metadata.age) metaParts.push(`${metadata.age} lat`);
+      if (metadata.gender) {
+        const genderMap = { female: 'Kobieta', male: 'Mężczyzna', other: 'Inna' };
+        metaParts.push(genderMap[metadata.gender] || metadata.gender);
+      }
+      if (metadata.problem) metaParts.push(metadata.problem);
+      if (metaParts.length > 0) {
+        headerHtml += `<p class="case-metadata">${metaParts.join(' • ')}</p>`;
+      }
+    }
+    caseHeader.innerHTML = headerHtml;
+    
+    // Siatka zdjęć
+    const imagesGrid = document.createElement('div');
+    imagesGrid.className = 'case-images-grid';
+    
+    caseItem.images.forEach((image, index) => {
+      const imageCard = document.createElement('div');
+      imageCard.className = 'case-image-item';
+      
+      const img = document.createElement('img');
+      img.src = image.public_url;
+      img.alt = `Zdjęcie ${index + 1}`;
+      img.loading = 'lazy';
+      
+      const caption = document.createElement('p');
+      caption.className = 'image-caption';
+      caption.textContent = `Zdjęcie ${index + 1}`;
+      
+      imageCard.appendChild(img);
+      imageCard.appendChild(caption);
+      imagesGrid.appendChild(imageCard);
+    });
+    
+    // Przycisk analizy AI
+    const analyzeButton = document.createElement('button');
+    analyzeButton.className = 'analyze-ai-button';
+    analyzeButton.innerHTML = `
+      <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+      </svg>
+      Analizuj AI (${caseItem.images.length} ${caseItem.images.length === 1 ? 'zdjęcie' : 'zdjęcia'})
+    `;
+    
+    analyzeButton.addEventListener('click', () => {
+      analyzeCaseImages(caseItem);
+    });
+    
+    caseCard.appendChild(caseHeader);
+    caseCard.appendChild(imagesGrid);
+    caseCard.appendChild(analyzeButton);
+    gallery.appendChild(caseCard);
+  });
+};
+
 const renderGallery = (files) => {
   const gallery = document.getElementById("session-gallery");
   const galleryTemplate = document.getElementById("gallery-item-template");
@@ -223,16 +301,32 @@ const fetchUploads = async (sessionId) => {
     const response = await fetch(`/api/uploads?sessionId=${encodeURIComponent(sessionId)}`);
     const payload = await response.json().catch(() => null);
 
+    let cases = [];
     let files = [];
 
-    if (response.ok && Array.isArray(payload?.files)) {
-      files = payload.files;
+    if (response.ok && payload) {
+      // Sprawdź czy API zwraca nowy format z case'ami
+      if (Array.isArray(payload?.cases)) {
+        cases = payload.cases;
+      }
+      // Fallback do starszego formatu
+      if (Array.isArray(payload?.files)) {
+        files = payload.files;
+      }
     } else {
       console.warn('API not available, using localStorage fallback');
       const localFiles = JSON.parse(localStorage.getItem('uploadedFiles') || '[]');
       files = localFiles.filter(file => file.session_id === sessionId);
     }
 
+    // Jeśli mamy case'y, renderuj je
+    if (cases.length > 0) {
+      if (statusLabel) statusLabel.textContent = "";
+      renderCaseGallery(cases);
+      return;
+    }
+
+    // Fallback do starszej wersji
     if (files.length === 0) {
       renderEmptyState("Brak przesłanych plików w tej sesji.");
       return;
@@ -406,6 +500,70 @@ function showAnalysisResults(analysis) {
   `;
   
   resultsDiv.innerHTML = html;
+}
+
+// Funkcje AI
+async function analyzeCaseImages(caseItem) {
+  console.log('Starting AI analysis for case:', caseItem.case_id);
+  
+  try {
+    openAIModal();
+    showLoadingState();
+    
+    // Przygotuj tablicę URLi zdjęć
+    const imageUrls = caseItem.images.map(img => img.public_url);
+    
+    const response = await fetch('/api/analyze-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        imageUrls: imageUrls, // Tablica URLi zamiast pojedynczego
+        metadata: caseItem.metadata,
+        isMultiImage: true
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Błąd podczas analizy');
+    }
+
+    if (!result.success || !result.analysis) {
+      throw new Error('Nieprawidłowa odpowiedź serwera');
+    }
+
+    console.log('Analysis completed:', result.analysis);
+    
+    // Pokaż wyniki
+    showAnalysisResults(result.analysis);
+    
+    // Zapisz analizę dla całego case'a
+    saveAnalysisToStorage(caseItem.case_id, result.analysis);
+    
+    return result.analysis;
+    
+  } catch (error) {
+    console.error('Analysis error:', error);
+    
+    const modal = document.getElementById('ai-modal');
+    if (modal) {
+      const content = modal.querySelector('.modal-content');
+      if (content) {
+        content.innerHTML = `
+          <div class="analysis-error">
+            <h2>❌ Błąd analizy</h2>
+            <p>${error.message}</p>
+            <button class="close-modal-button" onclick="closeAIModal()">Zamknij</button>
+          </div>
+        `;
+      }
+    }
+    
+    throw error;
+  }
 }
 
 async function analyzeImage(imageUrl, metadata, fileId) {
@@ -601,8 +759,54 @@ function handleFiles(files) {
     }
   }
 
-  updateFileList();
+  updatePreview();
   updateSubmitButton();
+}
+
+function updatePreview() {
+  const previewContainer = document.getElementById('preview-container');
+  const previewGrid = document.getElementById('preview-grid');
+  const previewCount = document.getElementById('preview-count');
+  const metadataForm = document.getElementById('metadata-form');
+  
+  if (!previewContainer || !previewGrid || !previewCount) return;
+  
+  previewGrid.innerHTML = '';
+  previewCount.textContent = selectedFiles.length;
+  
+  if (selectedFiles.length === 0) {
+    previewContainer.style.display = 'none';
+    if (metadataForm) metadataForm.style.display = 'none';
+    return;
+  }
+  
+  previewContainer.style.display = 'block';
+  if (metadataForm) metadataForm.style.display = 'block';
+  
+  selectedFiles.forEach((file, index) => {
+    const previewItem = document.createElement('div');
+    previewItem.className = 'preview-item';
+    
+    const img = document.createElement('img');
+    img.alt = file.name;
+    
+    // Wczytaj podgląd
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-preview';
+    removeBtn.innerHTML = '×';
+    removeBtn.title = 'Usuń zdjęcie';
+    removeBtn.addEventListener('click', () => removeFile(index));
+    
+    previewItem.appendChild(img);
+    previewItem.appendChild(removeBtn);
+    previewGrid.appendChild(previewItem);
+  });
 }
 
 function updateFileList() {
@@ -666,7 +870,7 @@ function clearMetadataForm() {
 
 function removeFile(index) {
   selectedFiles.splice(index, 1);
-  updateFileList();
+  updatePreview();
   updateSubmitButton();
   const errorMessage = document.getElementById('error-message');
   if (errorMessage) errorMessage.textContent = '';

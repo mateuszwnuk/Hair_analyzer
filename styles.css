@@ -38,42 +38,24 @@ body {
 /* Header */
 .app-header {
   background: var(--card-color);
-  border-radius: 16px;
-  padding: 2rem;
+  border-radius: 12px;
+  padding: 1.2rem 2rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
   text-align: center;
 }
 
 .header-content h1 {
-  margin: 0 0 0.5rem;
-  font-size: clamp(2rem, 4vw, 2.5rem);
+  margin: 0 0 0.3rem;
+  font-size: clamp(1.5rem, 3vw, 1.8rem);
   color: var(--accent-color);
   font-weight: 700;
 }
 
 .app-subtitle {
-  margin: 0 0 1.5rem;
+  margin: 0;
   color: var(--muted-color);
-  font-size: 1.1rem;
-}
-
-.session-info {
-  display: inline-flex;
-  align-items: center;
-  background: var(--active-tab-color);
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
   font-size: 0.9rem;
-}
-
-.session-info code {
-  background: var(--accent-color);
-  color: white;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  margin-left: 0.5rem;
-  font-family: 'SF Mono', Monaco, Consolas, monospace;
 }
 
 /* Tab Navigation */
@@ -158,6 +140,66 @@ body {
 /* Form Styles */
 #upload-form {
   padding: 2rem;
+}
+
+/* Preview Container */
+.preview-container {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.preview-container h3 {
+  margin: 0 0 1rem;
+  color: var(--text-color);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.preview-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card-color);
+  border: 2px solid var(--border-color);
+}
+
+.preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preview-item .remove-preview {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.preview-item .remove-preview:hover {
+  background: var(--error-color);
+  transform: scale(1.1);
 }
 
 .metadata-form {
@@ -319,6 +361,69 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
+}
+
+/* Case Card Styles */
+.case-card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  grid-column: 1 / -1; /* Span full width */
+}
+
+.case-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.case-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.case-header h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  color: var(--text-color);
+}
+
+.case-metadata {
+  margin: 0;
+  color: var(--muted-color);
+  font-size: 0.9rem;
+}
+
+.case-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.case-image-item {
+  position: relative;
+  background: var(--bg-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.case-image-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+}
+
+.image-caption {
+  margin: 0;
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted-color);
+  background: white;
 }
 
 .gallery-item {
@@ -1032,6 +1137,22 @@ body {
   color: var(--muted-color);
 }
 
+/* Footer */
+.app-footer {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+  margin-top: auto;
+  color: var(--muted-color);
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.app-footer p {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
 @media (max-width: 600px) {
   .session-toolbar {
     justify-content: center;
@@ -1039,5 +1160,10 @@ body {
 
   .gallery-item img {
     height: 180px;
+  }
+  
+  .app-footer {
+    font-size: 0.75rem;
+    padding: 1.5rem 1rem 1rem;
   }
 }

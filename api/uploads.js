@@ -41,13 +41,15 @@ export default async function handler(req, res) {
       const pathParts = blob.pathname.split('/');
       const fullFileName = pathParts[pathParts.length - 1];
       
-      // Wyodrębnij metadane z nazwy pliku
+      // Wyodrębnij caseId i metadane z nazwy pliku
+      const caseId = extractCaseIdFromFileName(fullFileName);
       const metadata = parseMetadataFromFileName(fullFileName);
       const originalFileName = extractOriginalFileName(fullFileName);
       
       return {
         id: blob.pathname,
         session_id: sessionId,
+        case_id: caseId,
         file_name: originalFileName,
         public_url: blob.url,
         uploaded_at: blob.uploadedAt,
@@ -57,12 +59,36 @@ export default async function handler(req, res) {
       };
     });
 
-    // Sortuj od najnowszych
-    files.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
+    // Grupuj pliki według caseId
+    const caseGroups = {};
+    files.forEach(file => {
+      const caseId = file.case_id || 'unknown';
+      if (!caseGroups[caseId]) {
+        caseGroups[caseId] = [];
+      }
+      caseGroups[caseId].push(file);
+    });
+
+    // Przekształć na array z obrazkami pogrupowanymi
+    const cases = Object.entries(caseGroups).map(([caseId, images]) => {
+      // Sortuj obrazy w grupie chronologicznie
+      images.sort((a, b) => new Date(a.uploaded_at) - new Date(b.uploaded_at));
+      
+      return {
+        case_id: caseId,
+        images: images,
+        uploaded_at: images[0].uploaded_at, // Data pierwszego zdjęcia
+        metadata: images[0].metadata, // Metadane z pierwszego zdjęcia
+      };
+    });
+
+    // Sortuj case'y od najnowszych
+    cases.sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
 
     return res.status(200).json({
       sessionId,
-      files,
+      cases,
+      files, // Zachowaj też starą strukturę dla kompatybilności
     });
   } catch (error) {
     console.error("[api/uploads]", error);
@@ -88,6 +114,13 @@ function getContentTypeFromUrl(url) {
     default:
       return 'application/octet-stream';
   }
+}
+
+// Funkcja do wyodrębnienia caseId z nazwy pliku
+function extractCaseIdFromFileName(fileName) {
+  // Format: case_1234567890_timestamp_name...
+  const caseMatch = fileName.match(/^(case_\d+)_/);
+  return caseMatch ? caseMatch[1] : null;
 }
 
 // Funkcja do wyodrębnienia metadanych z nazwy pliku
@@ -118,8 +151,9 @@ function parseMetadataFromFileName(fileName) {
 
 // Funkcja do wyodrębnienia oryginalnej nazwy pliku
 function extractOriginalFileName(fileName) {
-  // Usuń timestamp z początku
-  let cleaned = fileName.replace(/^\d+_/, '');
+  // Usuń caseId i timestamp z początku
+  let cleaned = fileName.replace(/^case_\d+_/, ''); // usuń caseId
+  cleaned = cleaned.replace(/^\d+_/, ''); // usuń timestamp
   
   // Usuń metadane jeśli istnieją
   cleaned = cleaned.replace(/_META_[^.]+_/, '');

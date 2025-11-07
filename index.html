@@ -11,11 +11,8 @@
     <!-- Wspólny nagłówek -->
     <header class="app-header">
       <div class="header-content">
-        <h1>Hair Analyzer</h1>
-        <p class="app-subtitle">System analizy trychologicznej skóry głowy</p>
-        <div class="session-info">
-          <span>ID Sesji: <code id="session-id"></code></span>
-        </div>
+        <h1>AI Hair Analyze</h1>
+        <p class="app-subtitle">Trychologiczna analiza skóry głowy</p>
       </div>
     </header>
 
@@ -57,6 +54,12 @@
             <p><strong>Kliknij, aby wybrać pliki</strong> lub przeciągnij je w to miejsce.</p>
             <p class="hint">Obsługiwane formaty: JPG, PNG. Maksymalnie 4 pliki po 5 MB.</p>
             <input id="file-input" type="file" accept="image/png, image/jpeg" multiple aria-label="Wybierz zdjęcia" />
+          </div>
+
+          <!-- Podgląd wybranych zdjęć -->
+          <div id="preview-container" class="preview-container" style="display: none;">
+            <h3>Wybrane zdjęcia (<span id="preview-count">0</span>/4)</h3>
+            <div id="preview-grid" class="preview-grid"></div>
           </div>
 
           <!-- Formularz metatagów -->
@@ -167,6 +170,11 @@
   <div id="toast" role="status" aria-live="polite" class="toast" hidden>
     <span class="toast-message"></span>
   </div>
+
+  <!-- Stopka -->
+  <footer class="app-footer">
+    <p>MADE by ROXX</p>
+  </footer>
 
   <script src="scripts/app.js"></script>
 </body>

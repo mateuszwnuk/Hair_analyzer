@@ -27,13 +27,16 @@ export default async function handler(req, res) {
   console.log('OpenAI API Key configured:', process.env.OPENAI_API_KEY?.substring(0, 10) + '...');
 
   try {
-    const { imageUrl, metadata } = req.body;
+    const { imageUrl, imageUrls, metadata, isMultiImage } = req.body;
 
-    if (!imageUrl) {
+    // Obsługa zarówno pojedynczego jak i wielu zdjęć
+    const urlsToAnalyze = isMultiImage && imageUrls ? imageUrls : (imageUrl ? [imageUrl] : []);
+    
+    if (urlsToAnalyze.length === 0) {
       return res.status(400).json({ error: 'Brak URL obrazu' });
     }
 
-    console.log('Analyzing image:', imageUrl);
+    console.log(`Analyzing ${urlsToAnalyze.length} image(s)`);
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
@@ -51,16 +54,14 @@ export default async function handler(req, res) {
       if (metadata.problem) contextInfo += `\n- Zgłoszony problem: ${metadata.problem}`;
     }
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Tańszy model, wystarczający do analizy obrazów
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `Jesteś ekspertem trychologiem i dermatologiem specjalizującym się w problemach skóry głowy i włosów. 
-            
-Przeanalizuj dokładnie to zdjęcie skóry głowy i włosów pod kątem medycznym.${contextInfo}
+    // Przygotuj wiadomość - dla wielu zdjęć dodaj wszystkie
+    const content = [
+      {
+        type: "text",
+        text: `Jesteś ekspertem trychologiem i dermatologiem specjalizującym się w problemach skóry głowy i włosów. 
+        
+${urlsToAnalyze.length > 1 ? `Przeanalizuj dokładnie te ${urlsToAnalyze.length} zdjęcia skóry głowy i włosów z różnych kątów.` : 'Przeanalizuj dokładnie to zdjęcie skóry głowy i włosów.'}
+${urlsToAnalyze.length > 1 ? 'Zdjęcia pokazują tę samą osobę z różnych perspektyw - wykorzystaj wszystkie dostępne informacje do kompleksowej analizy.' : ''}${contextInfo}
 
 WAŻNE: Odpowiedz TYLKO w formacie JSON (bez markdown, bez \`\`\`json):
 
@@ -71,21 +72,31 @@ WAŻNE: Odpowiedz TYLKO w formacie JSON (bez markdown, bez \`\`\`json):
   "confidence": liczba od 0 do 100,
   "symptoms": ["objaw 1", "objaw 2", "objaw 3"],
   "recommendations": ["rekomendacja 1", "rekomendacja 2", "rekomendacja 3"],
-  "detailedAnalysis": "szczegółowy opis tego co widać na zdjęciu",
+  "detailedAnalysis": "szczegółowy opis tego co widać na zdjęci${urlsToAnalyze.length > 1 ? 'ach' : 'u'}",
   "possibleCauses": ["możliwa przyczyna 1", "możliwa przyczyna 2"],
   "nextSteps": ["następny krok 1", "następny krok 2"]
 }
 
 Bądź precyzyjny, konkretny i profesjonalny. Jeśli nie jesteś pewien, wskaż to w polu confidence.`
-          },
-          {
-            type: "image_url",
-            image_url: { 
-              url: imageUrl,
-              detail: "high" // Wysoka jakość analizy
-            }
-          }
-        ]
+      }
+    ];
+
+    // Dodaj wszystkie zdjęcia do contentu
+    urlsToAnalyze.forEach((url, index) => {
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: url,
+          detail: "high"
+        }
+      });
+    });
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{
+        role: "user",
+        content: content
       }],
       max_tokens: 1000,
       temperature: 0.3 // Niższa temperatura dla bardziej konsystentnych wyników
