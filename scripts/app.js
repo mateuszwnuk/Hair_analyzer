@@ -464,6 +464,21 @@ function showAnalysisResults(analysis) {
   resultsDiv.style.display = 'block';
   
   // Generuj HTML wyników
+  
+  // Determine qualification type based on severity
+  const isAdvanced = analysis.severity === 'zaawansowany';
+  const qualificationIcon = isAdvanced 
+    ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 18px; height: 18px;">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+      </svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 18px; height: 18px;">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>`;
+  
+  const qualificationText = isAdvanced 
+    ? 'Kwalifikacja: Konsultacja przeszczepowa' 
+    : 'Kwalifikacja: Wizyta trychologiczna';
+  
   const html = `
     <div class="analysis-card">
       <h3>
@@ -472,6 +487,10 @@ function showAnalysisResults(analysis) {
       </h3>
       <div class="analysis-problem">
         <strong>${analysis.problem}</strong> (${analysis.problemCategory})
+      </div>
+      <div style="margin-top: 0.75rem; padding: 0.6rem; background: var(--bg-color); border-radius: 6px; display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; color: var(--accent-color);">
+        ${qualificationIcon}
+        <span style="font-weight: 500;">${qualificationText}</span>
       </div>
       <div style="margin-top: 0.5rem;">
         <small style="color: var(--muted-color);">Pewność: ${analysis.confidence}%</small>
@@ -526,6 +545,13 @@ function showAnalysisResults(analysis) {
       <strong>⚕️ Ważna informacja:</strong> Ta analiza jest narzędziem pomocniczym i nie zastępuje profesjonalnej konsultacji medycznej. 
       W przypadku problemów ze skórą głowy zalecamy wizytę u dermatologa lub trycholog.
     </div>
+
+    <button class="consultation-cta-button" onclick="bookConsultation()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+      Umów bezpłatną konsultację
+    </button>
   `;
   
   resultsDiv.innerHTML = html;
@@ -970,9 +996,27 @@ function showToast(message, type = 'info') {
   
   messageElement.textContent = message;
   toast.className = `toast toast-${type}`;
-  toast.hidden = false;
   
-  setTimeout(() => {
-    toast.hidden = true;
-  }, 5000);
+  setTimeout(() => toast.classList.remove('toast-show'), 3000);
 }
+
+// Consultation booking function
+function bookConsultation() {
+  // You can customize this to open a booking modal, redirect to booking page, or open WhatsApp/phone
+  const phoneNumber = '+48123456789'; // Replace with actual phone number
+  const message = 'Dzień dobry, chciałbym umówić się na bezpłatną konsultację trychologiczną.';
+  
+  // Option 1: Open WhatsApp (mobile-friendly)
+  const whatsappUrl = `https://wa.me/${phoneNumber.replace(/\+/g, '')}?text=${encodeURIComponent(message)}`;
+  
+  // Option 2: Phone call
+  // window.location.href = `tel:${phoneNumber}`;
+  
+  // Option 3: Show booking modal
+  // showBookingModal();
+  
+  window.open(whatsappUrl, '_blank');
+  
+  showToast('Przekierowywanie do WhatsApp...', 'success');
+}
+
